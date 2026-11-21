@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ rec.DS_RECEITA }} — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<a href="/cadastros/receitas" style="color:var(--ava-teal);text-decoration:none;font-size:.85rem"><i class="bi bi-arrow-left me-1"></i>Voltar para receitas</a>
+
+<div class="ava-card mt-3 mb-4">
+    <div class="ava-card-body">
+        <h4 style="color:var(--ava-orange);font-weight:700;margin-bottom:4px">{{ rec.DS_RECEITA }}</h4>
+        <div>
+            {% if rec.DS_GRUPO %}<span class="badge bg-secondary badge-pill me-1">{{ rec.DS_GRUPO }}</span>{% endif %}
+            {% if rec.TX_REND %}<small style="color:#999">Rendimento: {{ rec.TX_REND }}</small>{% endif %}
+        </div>
+    </div>
+</div>
+
+{% if itens %}
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Ingredientes</h3></div>
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead>
+                <tr>
+                    <th>Alimento</th>
+                    <th>Medida</th>
+                    <th class="text-end">Qtd</th>
+                    <th class="text-end">Prot (g)</th>
+                    <th class="text-end">Carb (g)</th>
+                    <th class="text-end">Lip (g)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in itens %}
+                <tr>
+                    <td>{{ i.Nm_Alimento }}</td>
+                    <td>{{ i.Ds_Medida if i.Ds_Medida else '—' }}</td>
+                    <td class="text-end">{{ i.NR_QTD|num }}</td>
+                    <td class="text-end">{{ i.VL_PTN|num }}</td>
+                    <td class="text-end">{{ i.VL_CH|num }}</td>
+                    <td class="text-end">{{ i.VL_LIP|num }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if rec.TX_MODO_PREP %}
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Modo de Preparo</h3></div>
+    <div class="ava-card-body">
+        <div style="white-space:pre-wrap;font-size:.9rem">{{ rec.TX_MODO_PREP }}</div>
+    </div>
+</div>
+{% endif %}
+
+{% if rec.TX_INF_NUTRI %}
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Informação Nutricional</h3></div>
+    <div class="ava-card-body">
+        <div style="white-space:pre-wrap;font-size:.9rem">{{ rec.TX_INF_NUTRI }}</div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

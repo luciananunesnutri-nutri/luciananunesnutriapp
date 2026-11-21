@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Alimentos — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="section-title mb-0"><i class="bi bi-apple me-2"></i>Alimentos ({{ total }})</h5>
+    <form class="d-flex gap-2" method="get">
+        <select name="grupo" class="form-select form-select-sm" style="width:180px;border-radius:8px" onchange="this.form.submit()">
+            <option value="">Todos os grupos</option>
+            {% for g in grupos %}
+            <option value="{{ g.CD_GRUPO }}" {% if grupo == g.CD_GRUPO|string %}selected{% endif %}>{{ g.DS_GRUPO }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="q" value="{{ busca }}" class="search-box" placeholder="Buscar alimento..." style="width:260px">
+        <button class="btn-ava" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+</div>
+
+<div class="ava-card">
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead>
+                <tr>
+                    <th>Alimento</th>
+                    <th>Grupo</th>
+                    <th class="text-end">Carb (g)</th>
+                    <th class="text-end">Prot (g)</th>
+                    <th class="text-end">Lip (g)</th>
+                    <th class="text-end">Fibra (g)</th>
+                    <th>Fonte</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in alimentos %}
+                <tr>
+                    <td style="font-weight:600">{{ a.Nm_Alimento }}</td>
+                    <td><small style="color:#999">{{ a.DS_GRUPO if a.DS_GRUPO else '—' }}</small></td>
+                    <td class="text-end">{{ a.Vl_Carb|num }}</td>
+                    <td class="text-end">{{ a.Vl_Prot|num }}</td>
+                    <td class="text-end">{{ a.Vl_G_Tot|num }}</td>
+                    <td class="text-end">{{ a.Vl_Fibra|num }}</td>
+                    <td><small style="color:#999">{{ a.Ds_Fonte if a.Ds_Fonte else '' }}</small></td>
+                    <td><a href="/cadastros/alimento/{{ a.cd_alimento }}" class="btn-ava-outline" style="padding:4px 12px;font-size:.8rem">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if total_pages > 1 %}
+<div class="ava-pagination">
+    {% if page > 1 %}
+    <a href="?q={{ busca }}&grupo={{ grupo }}&page={{ page - 1 }}">&laquo;</a>
+    {% endif %}
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="active">{{ p }}</span>
+        {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+        <a href="?q={{ busca }}&grupo={{ grupo }}&page={{ p }}">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 3 %}
+        <span class="dots">...</span>
+        {% endif %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="?q={{ busca }}&grupo={{ grupo }}&page={{ page + 1 }}">&raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

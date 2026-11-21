@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Pacientes — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="section-title mb-0"><i class="bi bi-people me-2"></i>Pacientes ({{ total }})</h5>
+    <form class="d-flex gap-2" method="get">
+        <input type="text" name="q" value="{{ busca }}" class="search-box" placeholder="Buscar por nome, email, telefone..." style="width:320px">
+        <button class="btn-ava" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+</div>
+
+{% macro sort_link(col, label) %}
+    {% set nova_dir = 'desc' if ordenar == col and direcao == 'asc' else 'asc' %}
+    <a href="?q={{ busca }}&ordenar={{ col }}&dir={{ nova_dir }}" style="color:inherit;text-decoration:none;white-space:nowrap">
+        {{ label }}
+        {% if ordenar == col %}
+            <i class="bi bi-caret-{{ 'up' if direcao == 'asc' else 'down' }}-fill" style="font-size:.65rem"></i>
+        {% else %}
+            <i class="bi bi-caret-down" style="font-size:.6rem;opacity:.3"></i>
+        {% endif %}
+    </a>
+{% endmacro %}
+
+<div class="ava-card">
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>{{ sort_link('nome', 'Nome') }}</th>
+                    <th>Sexo</th>
+                    <th>Idade</th>
+                    <th>Celular</th>
+                    <th>Atendimentos</th>
+                    <th>{{ sort_link('ultimo_atendimento', 'Último Atendimento') }}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pacientes %}
+                <tr>
+                    <td style="color:#aaa">{{ p.Cd_Paciente }}</td>
+                    <td style="font-weight:600">{{ p.Nm_Paciente }}</td>
+                    <td>
+                        {% if p.Fl_Sexo == 'M' %}
+                        <span class="badge badge-m badge-pill">M</span>
+                        {% elif p.Fl_Sexo == 'F' %}
+                        <span class="badge badge-f badge-pill">F</span>
+                        {% else %}{{ p.Fl_Sexo }}{% endif %}
+                    </td>
+                    <td>{{ calc_idade_detalhada(p.Dt_Nascimento) }}</td>
+                    <td>{{ p.Nr_Tel_Cel if p.Nr_Tel_Cel and '___' not in (p.Nr_Tel_Cel or '') else '—' }}</td>
+                    <td style="text-align:center">{{ p.Qt_Atendimentos if p.Qt_Atendimentos else '0' }}</td>
+                    <td>{{ p.Dt_Ultimo_Atendimento|data }}</td>
+                    <td><a href="/paciente/{{ p.Cd_Paciente }}" class="btn-ava-outline" style="padding:4px 12px;font-size:.8rem">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if total_pages > 1 %}
+<div class="ava-pagination">
+    {% if page > 1 %}
+    <a href="?q={{ busca }}&ordenar={{ ordenar }}&dir={{ direcao }}&page={{ page - 1 }}">&laquo;</a>
+    {% endif %}
+    {% for p in range(1, total_pages + 1) %}
+        {% if p == page %}
+        <span class="active">{{ p }}</span>
+        {% elif p <= 3 or p > total_pages - 3 or (p >= page - 2 and p <= page + 2) %}
+        <a href="?q={{ busca }}&ordenar={{ ordenar }}&dir={{ direcao }}&page={{ p }}">{{ p }}</a>
+        {% elif p == 4 or p == total_pages - 3 %}
+        <span class="dots">...</span>
+        {% endif %}
+    {% endfor %}
+    {% if page < total_pages %}
+    <a href="?q={{ busca }}&ordenar={{ ordenar }}&dir={{ direcao }}&page={{ page + 1 }}">&raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

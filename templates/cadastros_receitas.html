@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Receitas — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h5 class="section-title mb-0"><i class="bi bi-journal-text me-2"></i>Receitas ({{ receitas|length }})</h5>
+    <form class="d-flex gap-2" method="get">
+        <input type="text" name="q" value="{{ busca }}" class="search-box" placeholder="Buscar receita..." style="width:280px">
+        <button class="btn-ava" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+</div>
+
+<div class="row g-3">
+    {% for r in receitas %}
+    <div class="col-md-6 col-lg-4">
+        <a href="/cadastros/receita/{{ r.CD_RECEITA }}" class="text-decoration-none">
+            <div class="ava-card p-3 h-100">
+                <h6 style="color:#333;font-weight:700;margin-bottom:6px">{{ r.DS_RECEITA }}</h6>
+                <div>
+                    {% if r.DS_GRUPO %}<span class="badge bg-secondary badge-pill me-1">{{ r.DS_GRUPO }}</span>{% endif %}
+                    {% if r.TX_REND %}<small style="color:#999">Rend.: {{ r.TX_REND }}</small>{% endif %}
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

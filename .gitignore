@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+backup/
+telas_sistema_prototipos/
+importar_backup.py
+.claude/

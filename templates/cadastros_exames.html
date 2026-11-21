@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Exames Laboratoriais — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<h5 class="section-title mb-3"><i class="bi bi-clipboard2-pulse me-2"></i>Exames Laboratoriais</h5>
+
+{% for grupo in grupos %}
+<div class="ava-card mb-4">
+    <div class="ava-card-header">
+        <h3>{{ grupo.NM_GRUPO }}</h3>
+    </div>
+    <div class="ava-card-body" style="padding:12px 20px">
+        {% for e in exames %}
+        {% if e.CD_GRUPO_EXAME == grupo.CD_GRUPO %}
+        <div class="mb-2">
+            <a class="text-decoration-none d-flex align-items-center justify-content-between"
+               data-bs-toggle="collapse" href="#exame-{{ e.CD_EXAME|int }}" style="color:#333">
+                <span style="font-weight:600;font-size:.9rem">{{ e.NM_EXAME }}</span>
+                <i class="bi bi-chevron-down" style="font-size:.75rem;color:#aaa"></i>
+            </a>
+            <div class="collapse" id="exame-{{ e.CD_EXAME|int }}">
+                {% if e.DS_EXAME %}
+                <div style="padding:10px 14px;margin:6px 0 10px;background:#f8f9f8;border-radius:8px;font-size:.85rem;color:#555;border-left:3px solid var(--ava-teal)">
+                    {{ e.DS_EXAME }}
+                </div>
+                {% else %}
+                <div style="padding:6px 14px;font-size:.85rem;color:#aaa;font-style:italic">Sem descrição disponível.</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

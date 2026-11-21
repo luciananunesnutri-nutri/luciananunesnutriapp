@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Luciana Nunes Nutri — Painel{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon teal"><i class="bi bi-people-fill"></i></div>
+            <div>
+                <div class="stat-label">Pacientes</div>
+                <div class="stat-value">{{ stats.pacientes }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-apple"></i></div>
+            <div>
+                <div class="stat-label">Alimentos</div>
+                <div class="stat-value">{{ stats.alimentos }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-journal-text"></i></div>
+            <div>
+                <div class="stat-label">Receitas</div>
+                <div class="stat-value">{{ stats.receitas }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-calendar3"></i></div>
+            <div>
+                <div class="stat-label">Cardápios</div>
+                <div class="stat-value">{{ stats.cardapios }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon purple"><i class="bi bi-rulers"></i></div>
+            <div>
+                <div class="stat-label">Antropometrias</div>
+                <div class="stat-value">{{ stats.antropometrias }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon pink"><i class="bi bi-clipboard2-pulse"></i></div>
+            <div>
+                <div class="stat-label">Condutas</div>
+                <div class="stat-value">{{ stats.condutas }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon teal"><i class="bi bi-folder2-open"></i></div>
+            <div>
+                <div class="stat-label">Protocolos</div>
+                <div class="stat-value">{{ stats.protocolos }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="ava-card">
+    <div class="ava-card-header">
+        <h3>{% if busca %}Resultados para "{{ busca }}"{% else %}Pacientes recentes{% endif %}</h3>
+        <form method="get" action="/" class="d-flex gap-2" style="margin:0">
+            <input type="text" name="q" value="{{ busca }}" class="search-box" placeholder="Buscar paciente por nome ou telefone..." style="width:320px" autofocus>
+            <button class="btn-ava" type="submit"><i class="bi bi-search"></i></button>
+            {% if busca %}
+            <a href="/" class="btn-ava-outline" title="Limpar busca"><i class="bi bi-x-lg"></i></a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Sexo</th>
+                    <th>Idade</th>
+                    <th>Último Atendimento</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pacientes_recentes %}
+                <tr>
+                    <td style="font-weight:600">{{ p.Nm_Paciente }}</td>
+                    <td>
+                        {% if p.Fl_Sexo == 'M' %}
+                        <span class="badge badge-m badge-pill">M</span>
+                        {% elif p.Fl_Sexo == 'F' %}
+                        <span class="badge badge-f badge-pill">F</span>
+                        {% else %}{{ p.Fl_Sexo }}{% endif %}
+                    </td>
+                    <td>{{ calc_idade_detalhada(p.Dt_Nascimento) }}</td>
+                    <td>{{ p.Dt_Ultimo_Atendimento|data }}</td>
+                    <td><a href="/paciente/{{ p.Cd_Paciente }}" class="btn-ava-outline" style="padding:4px 12px;font-size:.8rem">Ver</a></td>
+                </tr>
+                {% endfor %}
+                {% if not pacientes_recentes %}
+                <tr><td colspan="5" class="text-center text-muted" style="padding:24px">Nenhum paciente encontrado.</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

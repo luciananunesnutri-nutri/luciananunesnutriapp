@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ card.DS_CARDAPIO }} — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<a href="/cadastros/cardapios" style="color:var(--ava-teal);text-decoration:none;font-size:.85rem"><i class="bi bi-arrow-left me-1"></i>Voltar para cardápios</a>
+
+<div class="ava-card mt-3 mb-4">
+    <div class="ava-card-body">
+        <h4 style="color:var(--ava-orange);font-weight:700;margin-bottom:0">{{ card.DS_CARDAPIO }}</h4>
+    </div>
+</div>
+
+{% for nome_refeicao, itens in refeicoes.items() %}
+<div class="meal-header"><i class="bi bi-clock me-1"></i>{{ nome_refeicao }}</div>
+<div class="ava-card mb-3">
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead>
+                <tr>
+                    <th>Alimento</th>
+                    <th>Medida</th>
+                    <th class="text-end">Qtd</th>
+                    <th class="text-end">Prot (g)</th>
+                    <th class="text-end">Carb (g)</th>
+                    <th class="text-end">Lip (g)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in itens %}
+                <tr>
+                    <td>{{ i.Nm_Alimento }}</td>
+                    <td>{{ i.Ds_Medida if i.Ds_Medida else '—' }}</td>
+                    <td class="text-end">{{ i.QT_ITEM|num }}</td>
+                    <td class="text-end">{{ i.VL_PTN|num }}</td>
+                    <td class="text-end">{{ i.VL_CH|num }}</td>
+                    <td class="text-end">{{ i.VL_LIP|num }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

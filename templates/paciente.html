@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+{% block title %}{{ pac.Nm_Paciente }} — Luciana Nunes Nutri{% endblock %}
+
+{% block body %}
+<div class="patient-layout">
+    <!-- SIDEBAR -->
+    <div class="patient-sidebar">
+        <div class="patient-photo">
+            <div class="avatar">{{ pac.Nm_Paciente[0] if pac.Nm_Paciente else '?' }}</div>
+            <div class="name">{{ pac.Nm_Paciente }}</div>
+            <div class="info">
+                {{ idade if idade is not none else '—' }} anos
+                {% if pac.Fl_Sexo == 'M' %}· Masculino{% elif pac.Fl_Sexo == 'F' %}· Feminino{% endif %}
+            </div>
+        </div>
+        <nav>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/resumo" class="{{ 'active' if secao == 'resumo' }}"><i class="bi bi-clipboard-data"></i> Resumo</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/antropometria" class="{{ 'active' if secao == 'antropometria' }}"><i class="bi bi-rulers"></i> Antropometria</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/laboratorial" class="{{ 'active' if secao == 'laboratorial' }}"><i class="bi bi-droplet"></i> Aval. Laboratorial</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/estudo_alimentar" class="{{ 'active' if secao == 'estudo_alimentar' }}"><i class="bi bi-journal-bookmark"></i> Estudo Alimentar</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/prescricao" class="{{ 'active' if secao == 'prescricao' }}"><i class="bi bi-card-checklist"></i> Prescrição Dietética</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/recomendacao" class="{{ 'active' if secao == 'recomendacao' }}"><i class="bi bi-calculator"></i> Recomendação Nutricional</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/conduta" class="{{ 'active' if secao == 'conduta' }}"><i class="bi bi-clipboard2-pulse"></i> Conduta Nutricional</a>
+            <a href="/paciente/{{ pac.Cd_Paciente }}/relatorio" class="{{ 'active' if secao == 'relatorio' }}"><i class="bi bi-graph-up-arrow"></i> Relatório Evolutivo</a>
+        </nav>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="patient-content">
+
+    {# ==================== RESUMO ==================== #}
+    {% if secao == 'resumo' %}
+        <h2 class="section-title">Resumo do Paciente</h2>
+
+        <div class="ava-card mb-3">
+            <div class="ava-card-header"><h3>Dados Cadastrais</h3></div>
+            <div class="ava-card-body">
+                <div class="row g-3">
+                    {% if pac.Ds_Endereco %}<div class="col-md-6"><small class="text-muted d-block">Endereço</small><strong>{{ pac.Ds_Endereco }}</strong></div>{% endif %}
+                    {% if pac.Ds_email %}<div class="col-md-3"><small class="text-muted d-block">Email</small><strong>{{ pac.Ds_email }}</strong></div>{% endif %}
+                    {% if pac.Nr_Tel_Cel and '___' not in (pac.Nr_Tel_Cel or '') %}<div class="col-md-3"><small class="text-muted d-block">Celular</small><strong>{{ pac.Nr_Tel_Cel }}</strong></div>{% endif %}
+                    {% if pac.Nr_Tel_Res and '___' not in (pac.Nr_Tel_Res or '') %}<div class="col-md-3"><small class="text-muted d-block">Tel. Residencial</small><strong>{{ pac.Nr_Tel_Res }}</strong></div>{% endif %}
+                    {% if pac.Nr_Tel_Trab and '___' not in (pac.Nr_Tel_Trab or '') %}<div class="col-md-3"><small class="text-muted d-block">Tel. Trabalho</small><strong>{{ pac.Nr_Tel_Trab }}</strong></div>{% endif %}
+                    {% if pac.Ds_Profissao %}<div class="col-md-3"><small class="text-muted d-block">Profissão</small><strong>{{ pac.Ds_Profissao }}</strong></div>{% endif %}
+                    {% if pac.Ds_Indicacao %}<div class="col-md-3"><small class="text-muted d-block">Indicação</small><strong>{{ pac.Ds_Indicacao }}</strong></div>{% endif %}
+                    {% if pac.Ds_Convenio %}<div class="col-md-3"><small class="text-muted d-block">Convênio</small><strong>{{ pac.Ds_Convenio }}</strong></div>{% endif %}
+                    {% if pac.Tx_Protocolo %}<div class="col-md-2"><small class="text-muted d-block">Nº Protocolo</small><strong>{{ pac.Tx_Protocolo }}</strong></div>{% endif %}
+                    {% if pac.Tx_Leito %}<div class="col-md-2"><small class="text-muted d-block">Nº Leito</small><strong>{{ pac.Tx_Leito }}</strong></div>{% endif %}
+                    <div class="col-md-3"><small class="text-muted d-block">Data de Nascimento</small><strong>{{ pac.Dt_Nascimento|data }}</strong></div>
+                    <div class="col-md-3"><small class="text-muted d-block">Última Alteração</small><strong>{{ pac.Dt_Alteracao|data }}</strong></div>
+                </div>
+            </div>
+        </div>
+
+        {% if ultima_antrop %}
+        <div class="ava-card mb-3">
+            <div class="ava-card-header"><h3>Última Antropometria</h3></div>
+            <div class="ava-card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="indicator-box">
+                            <div><div class="ind-label">Peso Atual</div><div class="ind-value">{{ ultima_antrop.Vl_Peso_Atual|num }} <span class="ind-unit">kg</span></div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="indicator-box">
+                            <div><div class="ind-label">Estatura</div><div class="ind-value">{{ ultima_antrop.Vl_Estatura|num(2) }} <span class="ind-unit">m</span></div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        {% set imc = calc_imc(ultima_antrop.Vl_Peso_Atual, ultima_antrop.Vl_Estatura) %}
+                        <div class="indicator-box">
+                            <div><div class="ind-label">IMC</div><div class="ind-value">{{ imc if imc else '—' }} <span class="ind-unit">kg/m²</span></div></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        {% set cls = classif_imc(imc) %}
+                        <div class="indicator-box">
+                            <div><div class="ind-label">Classificação</div>
+                            {% if cls[0] %}<span class="badge bg-{{ cls[1] }}">{{ cls[0] }}</span>{% else %}<span class="ind-value">—</span>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if condutas %}
+        <div class="ava-card mb-3">
+            <div class="ava-card-header"><h3>Últimas Condutas Nutricionais</h3></div>
+            <div class="ava-card-body">
+                {% for c in condutas %}
+                <div class="mb-3 p-3" style="background:#f8f9f8;border-radius:8px;">
+                    <div class="d-flex justify-content-between mb-1">
+                        <strong style="color:var(--ava-teal)">Protocolo {{ c.NR_PROTOCOLO }}</strong>
+                        <div>
+                            <span class="badge bg-light text-dark" style="font-size:.78rem"><i class="bi bi-calendar3 me-1"></i>{{ c.Dt_Atendimento|data }}</span>
+                            <small class="text-muted ms-2">{{ c.NM_USUARIO }}</small>
+                        </div>
+                    </div>
+                    <div style="white-space:pre-wrap;font-size:.875rem;">{{ c.TX_COND_NUTRI }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if protocolos %}
+        <div class="ava-card mb-3">
+            <div class="ava-card-header"><h3>Protocolos / Consultas</h3></div>
+            <div class="ava-card-body p-0">
+                <table class="ava-table">
+                    <thead><tr><th>Protocolo</th><th>Data Atendimento</th><th>Usuário</th><th>Motivo</th><th>Registros</th><th></th></tr></thead>
+                    <tbody>
+                    {% for p in protocolos %}
+                    <tr style="cursor:pointer" onclick="toggleProtoDetail('proto-detail-{{ p.Nr_Protocolo }}', this)">
+                        <td><strong>{{ p.Nr_Protocolo }}</strong></td>
+                        <td>{{ p.Dt_Atendimento|data }}</td>
+                        <td>{{ p.Nm_Usuario or '—' }}</td>
+                        <td>{{ p.Ds_motivo or '—' }}</td>
+                        <td>
+                            {% if p.qt_antrop %}<span class="badge bg-info text-dark" style="font-size:.7rem" title="Antropometria">Antrop.</span> {% endif %}
+                            {% if p.qt_conduta %}<span class="badge bg-warning text-dark" style="font-size:.7rem" title="Conduta">Conduta</span> {% endif %}
+                            {% if p.qt_anamnese %}<span class="badge bg-success" style="font-size:.7rem" title="Estudo Alimentar">Estudo Alim.</span> {% endif %}
+                            {% if not p.qt_antrop and not p.qt_conduta and not p.qt_anamnese %}<span class="text-muted" style="font-size:.8rem">—</span>{% endif %}
+                        </td>
+                        <td><i class="bi bi-chevron-down proto-chevron" style="transition:transform .2s;font-size:.8rem;color:var(--ava-teal)"></i></td>
+                    </tr>
+                    <tr id="proto-detail-{{ p.Nr_Protocolo }}" style="display:none">
+                        <td colspan="6" style="padding:0;background:#fafbfa">
+                            {% set det = proto_details.get(p.Nr_Protocolo, {}) %}
+                            {% if det %}
+                            <div style="padding:16px 20px;">
+                                {% if det.antrop %}
+                                <div class="mb-3">
+                                    <strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase"><i class="bi bi-rulers me-1"></i>Antropometria</strong>
+                                    <div class="row g-2 mt-1">
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">Peso</div><div class="ind-value">{{ det.antrop.Vl_Peso_Atual|num }} <span class="ind-unit">kg</span></div></div></div></div>
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">Estatura</div><div class="ind-value">{{ det.antrop.Vl_Estatura|num(2) }} <span class="ind-unit">m</span></div></div></div></div>
+                                        <div class="col-md-2">
+                                            {% set imc_p = calc_imc(det.antrop.Vl_Peso_Atual, det.antrop.Vl_Estatura) %}
+                                            <div class="indicator-box"><div><div class="ind-label">IMC</div><div class="ind-value">{{ imc_p if imc_p else '—' }}</div></div></div>
+                                        </div>
+                                        <div class="col-md-2">
+                                            {% set cls_p = classif_imc(imc_p) %}
+                                            <div class="indicator-box"><div><div class="ind-label">Classificação</div>{% if cls_p[0] %}<span class="badge bg-{{ cls_p[1] }}" style="font-size:.75rem">{{ cls_p[0] }}</span>{% else %}<div class="ind-value">—</div>{% endif %}</div></div>
+                                        </div>
+                                        {% if det.antrop.Vl_Perim_Cintura %}
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">C. Cintura</div><div class="ind-value">{{ det.antrop.Vl_Perim_Cintura|num }} <span class="ind-unit">cm</span></div></div></div></div>
+                                        {% endif %}
+                                        {% if det.antrop.Vl_Pct_Gord_Bio %}
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">% Gordura</div><div class="ind-value">{{ det.antrop.Vl_Pct_Gord_Bio|num }}</div></div></div></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                {% if det.conduta %}
+                                <div class="mb-3">
+                                    <strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase"><i class="bi bi-clipboard2-pulse me-1"></i>Conduta Nutricional</strong>
+                                    <div class="mt-1 p-2" style="background:#fff;border-radius:6px;border:1px solid #eee;white-space:pre-wrap;font-size:.85rem;">{{ det.conduta }}</div>
+                                </div>
+                                {% endif %}
+
+                                {% if det.anamnese %}
+                                <div class="mb-3">
+                                    <strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase"><i class="bi bi-journal-bookmark me-1"></i>Estudo Alimentar</strong>
+                                    <table class="ava-table mt-1" style="font-size:.82rem">
+                                        <thead><tr><th>Refeição</th><th>Alimento</th><th>Medida</th><th>Qtd</th></tr></thead>
+                                        <tbody>
+                                        {% for item in det.anamnese %}
+                                        <tr>
+                                            <td>{% set tp = item.CD_TIPO|string %}{{ {'0':'Desjejum','1':'Desjejum','2':'Colação','3':'Almoço','4':'L. Tarde','5':'Jantar','6':'Ceia','7':'Extra 1','8':'Extra 2','9':'Extra 3'}.get(tp, 'Ref. ' ~ tp) }}</td>
+                                            <td>{{ item.Nm_Alimento or '—' }}</td>
+                                            <td>{{ item.Ds_Medida or '—' }}</td>
+                                            <td>{{ item.QT_ALIMENTO or '—' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endif %}
+
+                                {% if det.recomendacao %}
+                                <div class="mb-1">
+                                    <strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase"><i class="bi bi-calculator me-1"></i>Recomendação Nutricional</strong>
+                                    <div class="row g-2 mt-1">
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">VET</div><div class="ind-value">{{ det.recomendacao.VL_ENERG|num(0) }} <span class="ind-unit">kcal</span></div></div></div></div>
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">% PTN</div><div class="ind-value">{{ det.recomendacao.VL_PCT_PROT|num(0) }}%</div></div></div></div>
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">% CH</div><div class="ind-value">{{ det.recomendacao.VL_PCT_CARB|num(0) }}%</div></div></div></div>
+                                        <div class="col-md-2"><div class="indicator-box"><div><div class="ind-label">% LIP</div><div class="ind-value">{{ det.recomendacao.VL_PCT_GORD|num(0) }}%</div></div></div></div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <div style="padding:16px 20px;color:#999;font-size:.85rem">Nenhum registro detalhado para este protocolo.</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    {# ==================== ANTROPOMETRIA ==================== #}
+    {% elif secao == 'antropometria' %}
+        <h2 class="section-title">Antropometria</h2>
+
+        {% if antropometrias %}
+        {% for a in antropometrias %}
+        <div class="ava-card mb-3">
+            <div class="ava-card-header">
+                <h3>Protocolo {{ a.Nr_Protocolo }}{% if a.DS_PROTOCOLO %} — {{ a.DS_PROTOCOLO }}{% endif %}</h3>
+            </div>
+            <div class="ava-card-body">
+                <div class="ava-tabs" id="antrop-tabs-{{ loop.index }}">
+                    <a href="#" class="active" onclick="switchTab(this,'tab-peso-{{ loop.index }}','antrop-tabs-{{ loop.index }}');return false;">Peso / Estatura / Pregas</a>
+                    <a href="#" onclick="switchTab(this,'tab-circ-{{ loop.index }}','antrop-tabs-{{ loop.index }}');return false;">Circunferências / Diâmetros</a>
+                </div>
+
+                <div id="tab-peso-{{ loop.index }}">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12"><strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase;">Estatura</strong></div>
+                        <div class="col-md-4"><div class="indicator-box"><div><div class="ind-label">Estatura (m)</div><div class="ind-value">{{ a.Vl_Estatura|num(2) }}</div></div></div></div>
+                        <div class="col-md-4"><div class="indicator-box"><div><div class="ind-label">Alt. do Joelho (cm)</div><div class="ind-value">{{ a.Vl_Alt_Joelho|num }}</div></div></div></div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-12"><strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase;">Peso</strong></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Peso Atual (kg)</div><div class="ind-value">{{ a.Vl_Peso_Atual|num(2) }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Peso Usual (kg)</div><div class="ind-value">{{ a.Vl_Peso_Usual|num(2) }}</div></div></div></div>
+                        <div class="col-md-3">
+                            {% set ps = peso_saudavel(a.Vl_Estatura) %}
+                            <div class="indicator-box"><div><div class="ind-label">Peso Saudável (kg)</div><div class="ind-value">{% if ps[0] %}{{ ps[0] }} - {{ ps[1] }}{% else %}—{% endif %}</div></div></div>
+                        </div>
+                        <div class="col-md-3">
+                            {% set alt_peso = pct_alteracao_peso(a.Vl_Peso_Atual, a.Vl_Peso_Usual) %}
+                            <div class="indicator-box"><div><div class="ind-label">Alter. de Peso (%)</div><div class="ind-value">{% if alt_peso is not none %}{{ alt_peso }}{% else %}—{% endif %}</div></div></div>
+                        </div>
+                        <div class="col-md-3">
+                            {% set imc = calc_imc(a.Vl_Peso_Atual, a.Vl_Estatura) %}
+                            <div class="indicator-box"><div><div class="ind-label">IMC (kg/m²)</div><div class="ind-value">{{ imc if imc else '—' }}</div></div></div>
+                        </div>
+                        <div class="col-md-3">
+                            {% set cls = classif_imc(imc) %}
+                            <div class="indicator-box"><div><div class="ind-label">Classificação</div>
+                            {% if cls[0] %}<span class="badge bg-{{ cls[1] }}">{{ cls[0] }}</span>{% else %}<span class="ind-value">—</span>{% endif %}
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-12"><strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase;">Pregas Cutâneas (mm)</strong></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Tricipital</div><div class="ind-value">{{ a.Vl_Prega_Tricipital|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Subescapular</div><div class="ind-value">{{ a.Vl_Prega_Subescapular|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Axilar Média</div><div class="ind-value">{{ a.Vl_Prega_Axilar|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Supra Ilíaca</div><div class="ind-value">{{ a.Vl_Prega_Suprailiaca|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Abdominal</div><div class="ind-value">{{ a.Vl_Prega_Abdome|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Peitoral</div><div class="ind-value">{{ a.Vl_Prega_Peitoral|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Coxa</div><div class="ind-value">{{ a.Vl_Prega_Coxa|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Bíceps</div><div class="ind-value">{{ a.Vl_Prega_Biceps|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Panturrilha</div><div class="ind-value">{{ a.Vl_Prega_Panturrilha|num }}</div></div></div></div>
+                    </div>
+
+                    {% if a.Vl_Pct_Gord_Bio %}
+                    <div class="row g-2">
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">% Gordura</div><div class="ind-value">{{ a.Vl_Pct_Gord_Bio|num(2) }}</div></div></div></div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div id="tab-circ-{{ loop.index }}" style="display:none;">
+                    <div class="row g-2">
+                        <div class="col-12"><strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase;">Circunferências e Perímetros</strong></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Cintura (cm)</div><div class="ind-value">{{ a.Vl_Perim_Cintura|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Quadril (cm)</div><div class="ind-value">{{ a.Vl_Perim_Quadril|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Braço (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Braco|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Abdômen (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Abd|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Pescoço (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Pescoco|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Tórax (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Torax|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Coxa Proximal (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Coxa_Prox|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Coxa Meso (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Coxa_Meso|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Panturrilha (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Panturrilha|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Braço Contraído (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Braco_Contraido|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Antebraço (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Antebraco|num }}</div></div></div></div>
+                        <div class="col-md-3"><div class="indicator-box"><div><div class="ind-label">Punho (cm)</div><div class="ind-value">{{ a.Vl_Circunf_Punho|num }}</div></div></div></div>
+                    </div>
+
+                    {% if a.Tx_Obs %}
+                    <div class="mt-3 p-3" style="background:#f8f9f8;border-radius:8px;">
+                        <small class="text-muted d-block mb-1">Observações</small>
+                        <div style="white-space:pre-wrap;font-size:.875rem;">{{ a.Tx_Obs }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="ava-card"><div class="ava-card-body text-center text-muted py-5">Nenhum registro de antropometria encontrado.</div></div>
+        {% endif %}
+
+    {# ==================== LABORATORIAL ==================== #}
+    {% elif secao == 'laboratorial' %}
+        <h2 class="section-title">Avaliação Laboratorial</h2>
+
+        {% if grupos %}
+        <div class="ava-tabs" id="lab-tabs">
+            {% for gr in grupos %}
+            <a href="#" class="{{ 'active' if loop.first }}" onclick="switchTab(this,'lab-group-{{ gr.CD_GRUPO|int }}','lab-tabs');return false;">{{ gr.NM_GRUPO }}</a>
+            {% endfor %}
+        </div>
+
+        {% for gr in grupos %}
+        <div id="lab-group-{{ gr.CD_GRUPO|int }}" {% if not loop.first %}style="display:none;"{% endif %}>
+            <div class="ava-card mb-3">
+                <div class="ava-card-body p-0">
+                    <table class="ava-table">
+                        <thead><tr><th>Exame</th><th>Descrição</th></tr></thead>
+                        <tbody>
+                        {% for ex in exames if ex.CD_GRUPO_EXAME|int == gr.CD_GRUPO|int %}
+                        <tr>
+                            <td><strong>{{ ex.NM_EXAME }}</strong></td>
+                            <td>
+                                {% if ex.DS_EXAME %}
+                                <a href="#" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';return false;" style="font-size:.82rem;color:var(--ava-teal);">
+                                    <i class="bi bi-info-circle"></i> Ver descrição
+                                </a>
+                                <div style="display:none;margin-top:6px;padding:10px;background:#f8f9f8;border-radius:6px;font-size:.82rem;white-space:pre-wrap;">{{ ex.DS_EXAME }}</div>
+                                {% else %}—{% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="ava-card"><div class="ava-card-body text-center text-muted py-5">Nenhum grupo de exame cadastrado.</div></div>
+        {% endif %}
+
+    {# ==================== ESTUDO ALIMENTAR ==================== #}
+    {% elif secao == 'estudo_alimentar' %}
+        <h2 class="section-title">Estudo Alimentar — Recordatório 24h</h2>
+
+        {% if refeicoes_por_protocolo %}
+        {% for proto, refeicoes in refeicoes_por_protocolo.items() %}
+        <div class="ava-card mb-4">
+            <div class="ava-card-header"><h3>Protocolo {{ proto }}</h3></div>
+            <div class="ava-card-body">
+                {% for nome_ref, itens in refeicoes.items() %}
+                <div class="meal-header"><i class="bi bi-clock me-1"></i>{{ nome_ref }}</div>
+                <table class="ava-table mb-3">
+                    <thead>
+                        <tr><th>Alimento</th><th>Medida</th><th class="text-end">Qtd</th><th class="text-end">Prot (g)</th><th class="text-end">Carb (g)</th><th class="text-end">Gord (g)</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for r in itens %}
+                    <tr>
+                        <td>{{ r.Nm_Alimento or '—' }}</td>
+                        <td>{{ r.Ds_Medida or '—' }}</td>
+                        <td class="text-end">{{ r.QT_ALIMENTO|num }}</td>
+                        <td class="text-end">{{ r.Vl_PTN|num }}</td>
+                        <td class="text-end">{{ r.Vl_Carb|num }}</td>
+                        <td class="text-end">{{ r.Vl_Gord|num }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="ava-card"><div class="ava-card-body text-center text-muted py-5">Nenhum estudo alimentar registrado para este paciente.</div></div>
+        {% endif %}
+
+    {# ==================== PRESCRIÇÃO DIETÉTICA ==================== #}
+    {% elif secao == 'prescricao' %}
+        <h2 class="section-title">Prescrição Dietética</h2>
+
+        {% if cardapios_list %}
+        <div class="mb-3">
+            <select class="form-select" style="max-width:400px;border-color:var(--ava-teal);" onchange="if(this.value)location.hash=this.value;">
+                <option value="">Selecione um cardápio...</option>
+                {% for cl in cardapios_list %}
+                <option value="card-{{ cl.CD_CARDAPIO }}">{{ cl.DS_CARDAPIO }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        {% if cardapios_dict %}
+        {% for cd_card, card_data in cardapios_dict.items() %}
+        <div class="ava-card mb-4" id="card-{{ cd_card }}">
+            <div class="ava-card-header"><h3>{{ card_data.nome }}</h3></div>
+            <div class="ava-card-body">
+                {% for nome_ref, itens in card_data.refeicoes.items() %}
+                <div class="meal-header"><i class="bi bi-clock me-1"></i>{{ nome_ref }}</div>
+                <table class="ava-table mb-3">
+                    <thead>
+                        <tr><th>Alimento</th><th>Medida</th><th class="text-end">Qtd</th><th class="text-end">Prot (g)</th><th class="text-end">Carb (g)</th><th class="text-end">Lip (g)</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for i in itens %}
+                    <tr>
+                        <td>{{ i.Nm_Alimento }}</td>
+                        <td>{{ i.Ds_Medida or '—' }}</td>
+                        <td class="text-end">{{ i.QT_ITEM|num }}</td>
+                        <td class="text-end">{{ i.VL_PTN|num }}</td>
+                        <td class="text-end">{{ i.VL_CH|num }}</td>
+                        <td class="text-end">{{ i.VL_LIP|num }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="ava-card"><div class="ava-card-body text-center text-muted py-5">Nenhum cardápio prescrito disponível.</div></div>
+        {% endif %}
+
+    {# ==================== RECOMENDAÇÃO NUTRICIONAL ==================== #}
+    {% elif secao == 'recomendacao' %}
+        <h2 class="section-title">Recomendação Nutricional</h2>
+
+        {% if rec_nutri %}
+        {% set vet = to_float(rec_nutri.VL_ENERG) %}
+        <div class="ava-card mb-4">
+            <div class="ava-card-header"><h3>Valor Energético e Distribuição</h3></div>
+            <div class="ava-card-body">
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="indicator-box" style="border-left:3px solid var(--ava-orange);">
+                            <div><div class="ind-label">VET Escolhido</div><div class="ind-value" style="color:var(--ava-orange);">{{ vet|num }} <span class="ind-unit">Kcal</span></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="ava-table mb-4">
+                    <thead>
+                        <tr><th></th><th class="text-center">% PTN</th><th class="text-center">% CH</th><th class="text-center">% LIP</th></tr>
+                    </thead>
+                    <tbody>
+                        {% set ptn_pct = to_float(rec_nutri.VL_PCT_PROT) %}
+                        {% set ch_pct = to_float(rec_nutri.VL_PCT_CARB) %}
+                        {% set lip_pct = to_float(rec_nutri.VL_PCT_GORD) %}
+                        <tr>
+                            <td><strong>%</strong></td>
+                            <td class="text-center">{{ ptn_pct|num }}</td>
+                            <td class="text-center">{{ ch_pct|num }}</td>
+                            <td class="text-center">{{ lip_pct|num }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Distrib. /g</strong></td>
+                            <td class="text-center">{{ ((vet * ptn_pct / 100) / 4)|num(2) }}</td>
+                            <td class="text-center">{{ ((vet * ch_pct / 100) / 4)|num(2) }}</td>
+                            <td class="text-center">{{ ((vet * lip_pct / 100) / 9)|num(2) }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Distrib. / Kcal</strong></td>
+                            <td class="text-center">{{ (vet * ptn_pct / 100)|num }}</td>
+                            <td class="text-center">{{ (vet * ch_pct / 100)|num }}</td>
+                            <td class="text-center">{{ (vet * lip_pct / 100)|num }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <strong style="color:var(--ava-teal);font-size:.82rem;text-transform:uppercase;">Distribuição por Refeição</strong>
+                <table class="ava-table mt-2">
+                    <thead><tr><th>Refeição</th><th class="text-center">%</th><th class="text-center">Kcal</th></tr></thead>
+                    <tbody>
+                        {% set meals = [
+                            ('Desjejum', rec_nutri.VL_PCT_DESJ),
+                            ('Colação', rec_nutri.VL_PCT_COL),
+                            ('Almoço', rec_nutri.VL_PCT_ALM),
+                            ('Lanche da Tarde', rec_nutri.VL_PCT_LTARDE),
+                            ('Jantar', rec_nutri.VL_PCT_JANT),
+                            ('Ceia', rec_nutri.VL_PCT_CEIA),
+                            ('Lanche Extra 1', rec_nutri.VL_PCT_LEXTRA),
+                            ('Lanche Extra 2', rec_nutri.VL_PCT_LEXTRA2),
+                            ('Lanche Extra 3', rec_nutri.VL_PCT_LEXTRA3),
+                        ] %}
+                        {% for name, pct in meals %}
+                        {% set pv = to_float(pct) %}
+                        {% if pv > 0 %}
+                        <tr>
+                            <td>{{ name }}</td>
+                            <td class="text-center">{{ pv|num }}</td>
+                            <td class="text-center">{{ (vet * pv / 100)|num }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="ava-card"><div class="ava-card-body text-center text-muted py-5">Nenhuma recomendação nutricional registrada para este paciente.</div></div>
+        {% endif %}
+
+    {# ==================== CONDUTA NUTRICIONAL ==================== #}
+    {% elif secao == 'conduta' %}
+        <h2 class="section-title">Conduta Nutricional</h2>
+
+        {% if condutas %}
+        {% for c in condutas %}
+        <div class="ava-card mb-3">
+            <div class="ava-card-header">
+                <h3>Protocolo {{ c.NR_PROTOCOLO }}</h3>
+                <small class="text-muted">{{ c.NM_USUARIO }}</small>
+            </div>
+            <div class="ava-card-body">
+                <div style="white-space:pre-wrap;font-size:.875rem;">{{ c.TX_COND_NUTRI }}</div>
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="ava-card mb-3"><div class="ava-card-body text-center text-muted py-5">Nenhuma conduta nutricional registrada.</div></div>
+        {% endif %}
+
+        {% if rec_nutri_list %}
+        <h3 class="section-title mt-4" style="font-size:1rem;">Orientações Nutricionais (Referência)</h3>
+        <div class="ava-card">
+            <div class="ava-card-body p-0">
+                <table class="ava-table">
+                    <thead><tr><th>Orientação</th><th></th></tr></thead>
+                    <tbody>
+                    {% for rn in rec_nutri_list %}
+                    <tr>
+                        <td><strong>{{ rn.NM_REC_NUTRI }}</strong></td>
+                        <td>
+                            {% if rn.DS_REC_NUTRI %}
+                            <a href="#" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';return false;" style="font-size:.82rem;color:var(--ava-teal);">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
+                            <div style="display:none;margin-top:6px;padding:10px;background:#f8f9f8;border-radius:6px;font-size:.82rem;white-space:pre-wrap;">{{ rn.DS_REC_NUTRI }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    {# ==================== RELATÓRIO EVOLUTIVO ==================== #}
+    {% elif secao == 'relatorio' %}
+        <h2 class="section-title">Relatório Antropometria — Evolução</h2>
+
+        {% if antropometrias %}
+        <div class="ava-card">
+            <div class="ava-card-body p-0" style="overflow-x:auto;">
+                <table class="ava-table" style="min-width:{{ 180 + antropometrias|length * 140 }}px;">
+                    <thead>
+                        <tr>
+                            <th style="min-width:160px;position:sticky;left:0;background:#fff;z-index:1;">Indicadores</th>
+                            {% for a in antropometrias %}
+                            <th class="text-center">{{ a.Dt_Atendimento|data if a.Dt_Atendimento else 'Prot. ' ~ a.Nr_Protocolo }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Idade (Anos)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ idade if idade is not none else '—' }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Estatura (m)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Estatura|num(2) }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Peso (kg)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Peso_Atual|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>IMC</strong></td>
+                            {% for a in antropometrias %}
+                            {% set imc = calc_imc(a.Vl_Peso_Atual, a.Vl_Estatura) %}
+                            {% set cls = classif_imc(imc) %}
+                            <td class="text-center">{{ imc if imc else '—' }}{% if cls[0] %} <br><small class="badge bg-{{ cls[1] }}" style="font-size:.65rem;">{{ cls[0] }}</small>{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>PCT (mm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Prega_Tricipital|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>% Gordura</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Pct_Gord_Bio|num(2) }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Circunf. Braço (cm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Circunf_Braco|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Circunf. Cintura (cm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Perim_Cintura|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Circunf. Quadril (cm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Perim_Quadril|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Circunf. Abdômen (cm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Circunf_Abd|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Prega Subescapular (mm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Prega_Subescapular|num }}</td>{% endfor %}
+                        </tr>
+                        <tr>
+                            <td style="position:sticky;left:0;background:#fff;"><strong>Prega Supra Ilíaca (mm)</strong></td>
+                            {% for a in antropometrias %}<td class="text-center">{{ a.Vl_Prega_Suprailiaca|num }}</td>{% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="ava-card"><div class="ava-card-body text-center text-muted py-5">Nenhum registro de antropometria para gerar relatório.</div></div>
+        {% endif %}
+
+    {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(el, targetId, tabGroupId) {
+    var group = document.getElementById(tabGroupId);
+    group.querySelectorAll('a').forEach(function(a) { a.classList.remove('active'); });
+    el.classList.add('active');
+    var parent = group.parentElement;
+    var allPanels = [];
+    group.querySelectorAll('a').forEach(function(a) {
+        var onclick = a.getAttribute('onclick');
+        var match = onclick.match(/switchTab\(this,'([^']+)'/);
+        if (match) allPanels.push(match[1]);
+    });
+    allPanels.forEach(function(id) {
+        var panel = document.getElementById(id);
+        if (panel) panel.style.display = (id === targetId) ? 'block' : 'none';
+    });
+}
+function toggleProtoDetail(id, row) {
+    var detail = document.getElementById(id);
+    var chevron = row.querySelector('.proto-chevron');
+    if (detail.style.display === 'none') {
+        detail.style.display = '';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+        detail.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+</script>
+{% endblock %}

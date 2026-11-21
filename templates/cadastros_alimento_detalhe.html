@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ alim.Nm_Alimento }} — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<a href="/cadastros/alimentos" style="color:var(--ava-teal);text-decoration:none;font-size:.85rem"><i class="bi bi-arrow-left me-1"></i>Voltar para alimentos</a>
+
+<div class="ava-card mt-3 mb-4">
+    <div class="ava-card-body">
+        <h4 style="color:var(--ava-orange);font-weight:700;margin-bottom:4px">{{ alim.Nm_Alimento }}</h4>
+        <small style="color:#999">Código: {{ alim.cd_alimento }} | Fonte: {{ alim.Ds_Fonte if alim.Ds_Fonte else '—' }}</small>
+    </div>
+</div>
+
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Macronutrientes (por 100g)</h3></div>
+    <div class="ava-card-body">
+        <div class="nutrient-grid">
+            <div class="nutrient-item"><div class="n-label">Carboidratos</div><div class="n-value">{{ alim.Vl_Carb|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Proteínas</div><div class="n-value">{{ alim.Vl_Prot|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Gordura Total</div><div class="n-value">{{ alim.Vl_G_Tot|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Gordura Saturada</div><div class="n-value">{{ alim.Vl_G_Sat|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Gordura Mono</div><div class="n-value">{{ alim.Vl_g_mon|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Gordura Poli</div><div class="n-value">{{ alim.Vl_G_poli|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Fibras</div><div class="n-value">{{ alim.Vl_Fibra|num(2) }} g</div></div>
+            <div class="nutrient-item"><div class="n-label">Colesterol</div><div class="n-value">{{ alim.Vl_Colest|num(2) }} mg</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Vitaminas</h3></div>
+    <div class="ava-card-body">
+        <div class="nutrient-grid">
+            <div class="nutrient-item"><div class="n-label">Vitamina A</div><div class="n-value">{{ alim.Vl_Vit_A|num(2) }} mcg</div></div>
+            <div class="nutrient-item"><div class="n-label">Vitamina C</div><div class="n-value">{{ alim.Vl_Vit_C|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Vitamina D</div><div class="n-value">{{ alim.Vl_Vit_D|num(2) }} mcg</div></div>
+            <div class="nutrient-item"><div class="n-label">Vitamina E</div><div class="n-value">{{ alim.Vl_Vit_E|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">B1 (Tiamina)</div><div class="n-value">{{ alim.Vl_B1|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">B2 (Riboflavina)</div><div class="n-value">{{ alim.Vl_B2|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">B6</div><div class="n-value">{{ alim.Vl_B6|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">B12</div><div class="n-value">{{ alim.Vl_B12|num(2) }} mcg</div></div>
+            <div class="nutrient-item"><div class="n-label">Niacina</div><div class="n-value">{{ alim.Vl_Nia|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Ácido Fólico</div><div class="n-value">{{ alim.Vl_Folic|num(2) }} mcg</div></div>
+            <div class="nutrient-item"><div class="n-label">Ác. Pantotênico</div><div class="n-value">{{ alim.Vl_Pant|num(2) }} mg</div></div>
+        </div>
+    </div>
+</div>
+
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Minerais</h3></div>
+    <div class="ava-card-body">
+        <div class="nutrient-grid">
+            <div class="nutrient-item"><div class="n-label">Cálcio</div><div class="n-value">{{ alim.Vl_Ca|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Ferro</div><div class="n-value">{{ alim.Vl_Fe|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Sódio</div><div class="n-value">{{ alim.Vl_Na|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Potássio</div><div class="n-value">{{ alim.Vl_K|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Fósforo</div><div class="n-value">{{ alim.Vl_P|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Magnésio</div><div class="n-value">{{ alim.Vl_mg|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Zinco</div><div class="n-value">{{ alim.Vl_zinco|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Manganês</div><div class="n-value">{{ alim.Vl_Mn|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Cobre</div><div class="n-value">{{ alim.Vl_Cobre|num(2) }} mg</div></div>
+            <div class="nutrient-item"><div class="n-label">Selênio</div><div class="n-value">{{ alim.Vl_Selen|num(2) }} mcg</div></div>
+            <div class="nutrient-item"><div class="n-label">Iodo</div><div class="n-value">{{ alim.Vl_Iodo|num(2) }} mcg</div></div>
+        </div>
+    </div>
+</div>
+
+{% if medidas %}
+<div class="ava-card mb-4">
+    <div class="ava-card-header"><h3>Medidas Caseiras</h3></div>
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead><tr><th>Medida</th><th class="text-end">Quantidade (g)</th></tr></thead>
+            <tbody>
+                {% for m in medidas %}
+                <tr>
+                    <td>{{ m.Ds_Medida }}</td>
+                    <td class="text-end">{{ m.Vl_alimento|num }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
