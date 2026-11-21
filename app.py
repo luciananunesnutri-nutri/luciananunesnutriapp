@@ -54,6 +54,8 @@ def get_db():
     if "db" not in g:
         g.db = sqlite3.connect(DB_PATH)
         g.db.row_factory = sqlite3.Row
+        g.db.execute("PRAGMA journal_mode=WAL")
+        g.db.execute("PRAGMA cache_size=-8000")
     return g.db
 
 
@@ -165,18 +167,23 @@ def index():
     if busca:
         pacientes_recentes = db.execute("""
             SELECT p.Cd_Paciente, p.Nm_Paciente, p.Fl_Sexo, p.Dt_Nascimento, p.Dt_Alteracao,
-                   (SELECT MAX(pp.Dt_Atendimento) FROM protocolo_paciente pp
-                    WHERE pp.Cd_Paciente = p.Cd_Paciente) AS Dt_Ultimo_Atendimento
+                   pp_agg.Dt_Ultimo_Atendimento
             FROM paciente p
+            LEFT JOIN (SELECT Cd_Paciente, MAX(Dt_Atendimento) AS Dt_Ultimo_Atendimento
+                       FROM protocolo_paciente GROUP BY Cd_Paciente) pp_agg
+                ON pp_agg.Cd_Paciente = p.Cd_Paciente
             WHERE p.Nm_Paciente LIKE ? OR p.Nr_Tel_Cel LIKE ?
             ORDER BY p.Nm_Paciente LIMIT 20
         """, (f"%{busca}%", f"%{busca}%")).fetchall()
     else:
         pacientes_recentes = db.execute("""
             SELECT p.Cd_Paciente, p.Nm_Paciente, p.Fl_Sexo, p.Dt_Nascimento, p.Dt_Alteracao,
-                   (SELECT MAX(pp.Dt_Atendimento) FROM protocolo_paciente pp
-                    WHERE pp.Cd_Paciente = p.Cd_Paciente) AS Dt_Ultimo_Atendimento
-            FROM paciente p ORDER BY p.Dt_Alteracao DESC LIMIT 15
+                   pp_agg.Dt_Ultimo_Atendimento
+            FROM paciente p
+            LEFT JOIN (SELECT Cd_Paciente, MAX(Dt_Atendimento) AS Dt_Ultimo_Atendimento
+                       FROM protocolo_paciente GROUP BY Cd_Paciente) pp_agg
+                ON pp_agg.Cd_Paciente = p.Cd_Paciente
+            ORDER BY p.Dt_Alteracao DESC LIMIT 15
         """).fetchall()
     return render_template("index.html", stats=stats,
         pacientes_recentes=pacientes_recentes, calc_idade=calc_idade,
@@ -210,11 +217,15 @@ def pacientes():
     rows = db.execute(f"""
         SELECT p.Cd_Paciente, p.Nm_Paciente, p.Fl_Sexo, p.Dt_Nascimento,
                p.Nr_Tel_Cel, p.Dt_Alteracao,
-               (SELECT MAX(pp.Dt_Atendimento) FROM protocolo_paciente pp
-                WHERE pp.Cd_Paciente = p.Cd_Paciente) AS Dt_Ultimo_Atendimento,
-               (SELECT COUNT(*) FROM protocolo_paciente pp
-                WHERE pp.Cd_Paciente = p.Cd_Paciente) AS Qt_Atendimentos
-        FROM paciente p {qual_where}
+               pp_agg.Dt_Ultimo_Atendimento,
+               pp_agg.Qt_Atendimentos
+        FROM paciente p
+        LEFT JOIN (SELECT Cd_Paciente,
+                          MAX(Dt_Atendimento) AS Dt_Ultimo_Atendimento,
+                          COUNT(*) AS Qt_Atendimentos
+                   FROM protocolo_paciente GROUP BY Cd_Paciente) pp_agg
+            ON pp_agg.Cd_Paciente = p.Cd_Paciente
+        {qual_where}
         ORDER BY {order_col} {direcao} {nulls} LIMIT ? OFFSET ?
     """, params + [per_page, (page - 1) * per_page]).fetchall()
     total_pages = max(1, (total + per_page - 1) // per_page)
