@@ -9,6 +9,47 @@ from datetime import datetime
 app = Flask(__name__)
 DB_PATH = os.path.join(os.path.dirname(__file__), "avanutri.db")
 
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS plano (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        num_consultas INTEGER DEFAULT 1,
+        valor REAL DEFAULT 0.0,
+        descricao TEXT,
+        ativo INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS acompanhamento (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT NOT NULL,
+        apelido TEXT,
+        whatsapp TEXT,
+        documento TEXT,
+        email TEXT,
+        dt_nascimento TEXT,
+        estado TEXT,
+        cidade TEXT,
+        plano_id INTEGER REFERENCES plano(id),
+        dt_inicio TEXT,
+        dt_cadastro TEXT DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'ativo',
+        status_plano TEXT DEFAULT 'ativo',
+        etiqueta TEXT,
+        possui_vencimento INTEGER DEFAULT 1,
+        alerta_atendimentos TEXT DEFAULT 'nao_notificar'
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_plano ON acompanhamento(plano_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_status ON acompanhamento(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_estado ON acompanhamento(estado)')
+    conn.commit()
+    conn.close()
+
+
+init_db()
+
 NOMES_REFEICAO = {
     "0": "Desjejum", "1": "Desjejum", "2": "Colação", "3": "Almoço",
     "4": "Lanche da Tarde", "5": "Jantar", "6": "Ceia",
