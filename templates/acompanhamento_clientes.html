@@ -40,6 +40,7 @@
                 <tr>
                     <th>Nome</th>
                     <th>Plano</th>
+                    <th>Valor R$</th>
                     <th>Status Plano</th>
                     <th>Estado</th>
                     <th>Cadastrado</th>
@@ -56,6 +57,7 @@
                         {% if c.apelido %}<br><small style="color:#999">{{ c.apelido }}</small>{% endif %}
                     </td>
                     <td>{{ c.plano_nome or '—' }}</td>
+                    <td style="font-weight:600">{{ 'R$ %.2f'|format(c.valor)|replace('.', ',') if c.valor else '—' }}</td>
                     <td>
                         {% if c.status_plano == 'vencido' %}
                         <span style="background:#fff3cd;color:#856404;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600">Vencido</span>
@@ -90,7 +92,7 @@
                 </tr>
                 {% endfor %}
                 {% if not clientes %}
-                <tr><td colspan="8" class="text-center text-muted" style="padding:24px">Nenhum cliente encontrado.</td></tr>
+                <tr><td colspan="9" class="text-center text-muted" style="padding:24px">Nenhum cliente encontrado.</td></tr>
                 {% endif %}
             </tbody>
         </table>

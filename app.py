@@ -33,6 +33,7 @@ def init_db():
         estado TEXT,
         cidade TEXT,
         plano_id INTEGER REFERENCES plano(id),
+        valor REAL DEFAULT 0.0,
         dt_inicio TEXT,
         dt_cadastro TEXT DEFAULT CURRENT_TIMESTAMP,
         status TEXT DEFAULT 'ativo',
@@ -41,6 +42,10 @@ def init_db():
         possui_vencimento INTEGER DEFAULT 1,
         alerta_atendimentos TEXT DEFAULT 'nao_notificar'
     )''')
+    try:
+        c.execute('ALTER TABLE acompanhamento ADD COLUMN valor REAL DEFAULT 0.0')
+    except sqlite3.OperationalError:
+        pass
     c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_plano ON acompanhamento(plano_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_status ON acompanhamento(status)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_estado ON acompanhamento(estado)')
@@ -618,14 +623,17 @@ def acompanhamento_dashboard():
     total_clientes = total_ativos + total_vencidos + total_pausados + total_inativos
 
     receita_ativos = db.execute("""
-        SELECT COALESCE(SUM(p.valor), 0) FROM acompanhamento a
-        JOIN plano p ON a.plano_id = p.id WHERE a.status='ativo'
+        SELECT COALESCE(SUM(a.valor), 0) FROM acompanhamento a
+        WHERE a.status='ativo' AND a.plano_id IS NOT NULL AND a.valor > 0
     """).fetchone()[0]
     receita_total = db.execute("""
-        SELECT COALESCE(SUM(p.valor), 0) FROM acompanhamento a
-        JOIN plano p ON a.plano_id = p.id
+        SELECT COALESCE(SUM(a.valor), 0) FROM acompanhamento a
+        WHERE a.plano_id IS NOT NULL AND a.valor > 0
     """).fetchone()[0]
-    ticket_medio = receita_total / total_clientes if total_clientes > 0 else 0
+    clientes_com_plano = db.execute("""
+        SELECT COUNT(*) FROM acompanhamento WHERE plano_id IS NOT NULL AND valor > 0
+    """).fetchone()[0]
+    ticket_medio = receita_total / clientes_com_plano if clientes_com_plano > 0 else 0
 
     dist_plano = db.execute("""
         SELECT p.nome, COUNT(*) as qt, p.valor
@@ -712,17 +720,20 @@ def acompanhamento_clientes():
 def acompanhamento_cliente_novo():
     db = get_db()
     if request.method == "POST":
+        valor_str = request.form.get("valor", "0").replace(",", ".")
         db.execute("""
             INSERT INTO acompanhamento (nome, apelido, whatsapp, documento, email,
-                dt_nascimento, estado, cidade, plano_id, dt_inicio, status,
+                dt_nascimento, estado, cidade, plano_id, valor, dt_inicio, status,
                 status_plano, possui_vencimento, alerta_atendimentos, etiqueta)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             request.form.get("nome"), request.form.get("apelido"),
             request.form.get("whatsapp"), request.form.get("documento"),
             request.form.get("email"), request.form.get("dt_nascimento"),
             request.form.get("estado"), request.form.get("cidade"),
-            request.form.get("plano_id") or None, request.form.get("dt_inicio"),
+            request.form.get("plano_id") or None,
+            float(valor_str) if valor_str else 0.0,
+            request.form.get("dt_inicio"),
             "ativo", "ativo",
             1 if request.form.get("possui_vencimento") == "sim" else 0,
             request.form.get("alerta_atendimentos", "nao_notificar"),
@@ -742,10 +753,11 @@ def acompanhamento_cliente_editar(cid):
     if not cliente:
         return "Cliente não encontrado", 404
     if request.method == "POST":
+        valor_str = request.form.get("valor", "0").replace(",", ".")
         db.execute("""
             UPDATE acompanhamento SET nome=?, apelido=?, whatsapp=?, documento=?,
                 email=?, dt_nascimento=?, estado=?, cidade=?, plano_id=?,
-                dt_inicio=?, status=?, status_plano=?, possui_vencimento=?,
+                valor=?, dt_inicio=?, status=?, status_plano=?, possui_vencimento=?,
                 alerta_atendimentos=?, etiqueta=?
             WHERE id=?
         """, (
@@ -753,7 +765,9 @@ def acompanhamento_cliente_editar(cid):
             request.form.get("whatsapp"), request.form.get("documento"),
             request.form.get("email"), request.form.get("dt_nascimento"),
             request.form.get("estado"), request.form.get("cidade"),
-            request.form.get("plano_id") or None, request.form.get("dt_inicio"),
+            request.form.get("plano_id") or None,
+            float(valor_str) if valor_str else 0.0,
+            request.form.get("dt_inicio"),
             request.form.get("status", "ativo"),
             request.form.get("status_plano", "ativo"),
             1 if request.form.get("possui_vencimento") == "sim" else 0,
