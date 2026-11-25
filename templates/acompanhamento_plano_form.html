@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if plano else 'Novo' }} Plano — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<h5 class="section-title"><i class="bi bi-journal-bookmark me-2"></i>{{ 'Editar' if plano else 'Novo' }} Plano</h5>
+
+<div class="ava-card">
+    <div class="ava-card-body">
+        <style>
+            .form-label-ava { font-size:.85rem; font-weight:600; color:#555; margin-bottom:4px; display:block; }
+            .form-input-ava {
+                border:2px solid #dde0de; border-radius:8px; padding:8px 14px;
+                font-size:.875rem; width:100%; box-sizing:border-box;
+                transition: border-color .15s;
+            }
+            .form-input-ava:focus { border-color:#1a8a7d; outline:none; box-shadow:0 0 0 .15rem rgba(26,138,125,.12); }
+        </style>
+        <form method="post" action="{{ '/acompanhamento/planos/' ~ plano.id ~ '/editar' if plano else '/acompanhamento/planos/novo' }}">
+            <div class="row g-3 mb-3">
+                <div class="col-md-8">
+                    <label class="form-label-ava">Nome <span style="color:#c00">*</span></label>
+                    <input type="text" name="nome" class="form-input-ava" required value="{{ plano.nome if plano else '' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label-ava">Nº Consultas</label>
+                    <input type="number" name="num_consultas" class="form-input-ava" min="1" value="{{ plano.num_consultas if plano else 1 }}">
+                </div>
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                    <label class="form-label-ava">Valor R$</label>
+                    <input type="text" name="valor" class="form-input-ava" placeholder="0,00" value="{{ '%.2f'|format(plano.valor)|replace('.', ',') if plano else '' }}">
+                </div>
+                {% if plano %}
+                <div class="col-md-4">
+                    <label class="form-label-ava">Ativo</label>
+                    <select name="ativo" class="form-input-ava">
+                        <option value="1" {{ 'selected' if plano.ativo }}>Sim</option>
+                        <option value="0" {{ 'selected' if not plano.ativo }}>Não</option>
+                    </select>
+                </div>
+                {% endif %}
+            </div>
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <label class="form-label-ava">Descrição</label>
+                    <textarea name="descricao" class="form-input-ava" rows="3">{{ plano.descricao if plano and plano.descricao else '' }}</textarea>
+                </div>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <a href="/acompanhamento/planos" class="btn-ava-outline">Cancelar</a>
+                <button type="submit" class="btn-ava">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

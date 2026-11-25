@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Planos — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="section-title mb-0"><i class="bi bi-journal-bookmark me-2"></i>Planos de Acompanhamento</h5>
+    <a href="/acompanhamento/planos/novo" class="btn-ava"><i class="bi bi-plus me-1"></i>Novo Plano</a>
+</div>
+
+<div class="ava-card">
+    <div class="ava-card-body" style="padding:0">
+        <table class="ava-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Consultas</th>
+                    <th>Valor (R$)</th>
+                    <th style="text-align:center">Clientes</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in planos %}
+                <tr>
+                    <td>
+                        <span style="font-weight:600">{{ p.nome }}</span>
+                        {% if p.descricao %}
+                        <br><small style="color:#999">{{ p.descricao }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.num_consultas }}</td>
+                    <td>R$ {{ "%.2f"|format(p.valor)|replace(".", ",") }}</td>
+                    <td style="text-align:center">{{ p.qt_clientes }}</td>
+                    <td>
+                        {% if p.ativo %}
+                        <span style="background:#d4edda;color:#155724;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600">Ativo</span>
+                        {% else %}
+                        <span style="background:#e2e3e5;color:#383d41;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600">Inativo</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-2 align-items-center">
+                            <a href="/acompanhamento/planos/{{ p.id }}/editar" class="btn-ava-outline" style="padding:4px 12px;font-size:.8rem">Editar</a>
+                            <form method="post" action="/acompanhamento/planos/{{ p.id }}/excluir" style="margin:0" onsubmit="return confirm('Excluir este plano?')">
+                                <button type="submit" class="btn-ava-orange" style="padding:4px 12px;font-size:.8rem">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted" style="padding:24px">Nenhum plano cadastrado.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

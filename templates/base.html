@@ -311,6 +311,7 @@
             <a href="/" class="{{ 'active' if request.path == '/' }}"><i class="bi bi-house-door"></i>Home</a>
             <a href="/pacientes" class="{{ 'active' if '/paciente' in request.path }}"><i class="bi bi-people"></i>Pacientes</a>
             <a href="/cadastros" class="{{ 'active' if '/cadastro' in request.path }}"><i class="bi bi-folder2-open"></i>Cadastros</a>
+            <a href="/acompanhamento" class="{{ 'active' if '/acompanhamento' in request.path }}"><i class="bi bi-clipboard-check"></i>Acompanhamento</a>
         </div>
     </div>
     {% block body %}

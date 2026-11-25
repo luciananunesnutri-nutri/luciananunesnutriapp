@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if cliente else "Novo" }} Cliente — Luciana Nunes Nutri{% endblock %}
+{% block content %}
+<style>
+    .wizard-bar { display:flex; align-items:center; justify-content:center; gap:0; margin-bottom:30px; }
+    .wizard-step { display:flex; align-items:center; gap:8px; }
+    .wizard-step .circle { width:32px; height:32px; border-radius:50%; background:#ddd; color:#888; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem; }
+    .wizard-step.active .circle { background:#1a8a7d; color:#fff; }
+    .wizard-step.done .circle { background:#28a745; color:#fff; }
+    .wizard-step .label { font-size:.85rem; color:#888; font-weight:500; }
+    .wizard-step.active .label { color:#1a8a7d; font-weight:700; }
+    .wizard-line { width:80px; height:2px; background:#ddd; margin:0 12px; }
+    .form-label { font-size:.85rem; font-weight:600; color:#555; margin-bottom:4px; }
+    .form-input {
+        border:2px solid #dde0de; border-radius:8px; padding:8px 14px;
+        font-size:.875rem; width:100%; transition:border-color .15s;
+    }
+    .form-input:focus { border-color:#1a8a7d; box-shadow:0 0 0 .15rem rgba(26,138,125,.12); outline:none; }
+    select.form-input { appearance:auto; }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="section-title mb-0">
+        <i class="bi bi-person-plus me-2"></i>{{ "Editar" if cliente else "Novo" }} Cliente
+    </h5>
+    <a href="/acompanhamento/clientes" class="btn-ava-outline" style="padding:5px 14px;font-size:.85rem">
+        <i class="bi bi-arrow-left me-1"></i>Voltar à lista
+    </a>
+</div>
+
+<div class="ava-card">
+    <div class="ava-card-body" style="padding:30px">
+        <div class="wizard-bar">
+            <div class="wizard-step active" id="ws1">
+                <div class="circle">1</div>
+                <div class="label">Dados do cliente</div>
+            </div>
+            <div class="wizard-line"></div>
+            <div class="wizard-step" id="ws2">
+                <div class="circle">2</div>
+                <div class="label">Plano</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ '/acompanhamento/clientes/' ~ cliente.id ~ '/editar' if cliente else '/acompanhamento/clientes/novo' }}">
+            <div id="step1">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Nome <span style="color:#c00">*</span></label>
+                        <input type="text" name="nome" class="form-input" required value="{{ cliente.nome if cliente else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Apelido</label>
+                        <input type="text" name="apelido" class="form-input" value="{{ cliente.apelido if cliente and cliente.apelido else '' }}">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">WhatsApp</label>
+                        <input type="text" name="whatsapp" class="form-input" placeholder="(00) 00000-0000" value="{{ cliente.whatsapp if cliente and cliente.whatsapp else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Documento (CPF)</label>
+                        <input type="text" name="documento" class="form-input" placeholder="000.000.000-00" value="{{ cliente.documento if cliente and cliente.documento else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">E-mail</label>
+                        <input type="email" name="email" class="form-input" placeholder="email@exemplo.com" value="{{ cliente.email if cliente and cliente.email else '' }}">
+                    </div>
+                </div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">Nascimento</label>
+                        <input type="date" name="dt_nascimento" class="form-input" value="{{ cliente.dt_nascimento if cliente and cliente.dt_nascimento else '' }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Estado</label>
+                        <select name="estado" class="form-input">
+                            <option value="">UF</option>
+                            {% for uf in estados %}
+                            <option value="{{ uf }}" {{ 'selected' if cliente and cliente.estado == uf }}>{{ uf }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Cidade</label>
+                        <input type="text" name="cidade" class="form-input" placeholder="Ex: Recife" value="{{ cliente.cidade if cliente and cliente.cidade else '' }}">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn-ava" onclick="showStep(2)">Avançar <i class="bi bi-arrow-right ms-1"></i></button>
+                </div>
+            </div>
+
+            <div id="step2" style="display:none">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Plano</label>
+                        <select name="plano_id" class="form-input">
+                            <option value="">Selecione um plano</option>
+                            {% for p in planos %}
+                            <option value="{{ p.id }}" {{ 'selected' if cliente and cliente.plano_id == p.id }}>{{ p.nome }} — R$ {{ "%.2f"|format(p.valor) }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Inicia em</label>
+                        <input type="date" name="dt_inicio" class="form-input" value="{{ cliente.dt_inicio if cliente and cliente.dt_inicio else '' }}">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Alerta de atendimentos</label>
+                        <select name="alerta_atendimentos" class="form-input">
+                            <option value="nao_notificar" {{ 'selected' if not cliente or cliente.alerta_atendimentos == 'nao_notificar' }}>Não notificar</option>
+                            <option value="1_dia" {{ 'selected' if cliente and cliente.alerta_atendimentos == '1_dia' }}>1 dia antes</option>
+                            <option value="3_dias" {{ 'selected' if cliente and cliente.alerta_atendimentos == '3_dias' }}>3 dias antes</option>
+                            <option value="7_dias" {{ 'selected' if cliente and cliente.alerta_atendimentos == '7_dias' }}>7 dias antes</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Possui vencimento?</label>
+                        <select name="possui_vencimento" class="form-input">
+                            <option value="sim" {{ 'selected' if not cliente or cliente.possui_vencimento == 1 }}>Sim</option>
+                            <option value="nao" {{ 'selected' if cliente and cliente.possui_vencimento == 0 }}>Não</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Etiqueta</label>
+                        <input type="text" name="etiqueta" class="form-input" placeholder="Ex: Reeducação alimentar" value="{{ cliente.etiqueta if cliente and cliente.etiqueta else '' }}">
+                    </div>
+                </div>
+                {% if cliente %}
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-input">
+                            <option value="ativo" {{ 'selected' if cliente.status == 'ativo' }}>Ativo</option>
+                            <option value="vencido" {{ 'selected' if cliente.status == 'vencido' }}>Vencido</option>
+                            <option value="pausado" {{ 'selected' if cliente.status == 'pausado' }}>Pausado</option>
+                            <option value="inativo" {{ 'selected' if cliente.status == 'inativo' }}>Inativo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Status Plano</label>
+                        <select name="status_plano" class="form-input">
+                            <option value="ativo" {{ 'selected' if cliente.status_plano == 'ativo' }}>Ativo</option>
+                            <option value="vencido" {{ 'selected' if cliente.status_plano == 'vencido' }}>Vencido</option>
+                        </select>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between mt-4">
+                    <button type="button" class="btn-ava-outline" onclick="showStep(1)"><i class="bi bi-arrow-left me-1"></i>Voltar</button>
+                    <button type="submit" class="btn-ava"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function showStep(n) {
+    document.getElementById('step1').style.display = n===1 ? 'block':'none';
+    document.getElementById('step2').style.display = n===2 ? 'block':'none';
+    document.querySelectorAll('.wizard-step').forEach(function(el, i) {
+        el.classList.toggle('active', i===n-1);
+        el.classList.toggle('done', i<n-1);
+    });
+}
+</script>
+{% endblock %}

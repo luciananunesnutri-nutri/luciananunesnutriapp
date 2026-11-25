@@ -3,7 +3,7 @@ Luciana Nunes Nutri — Sistema de gestão nutricional.
 """
 import sqlite3
 import os
-from flask import Flask, render_template, request, jsonify, g
+from flask import Flask, render_template, request, jsonify, g, redirect
 from datetime import datetime
 
 app = Flask(__name__)
@@ -557,6 +557,233 @@ def api_stats():
     for table in ["paciente", "alimento", "receita", "cardapio", "antropometria"]:
         stats[table] = db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
     return jsonify(stats)
+
+
+# --- MÓDULO ACOMPANHAMENTO ---
+
+ESTADOS_BR = [
+    "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG",
+    "PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+]
+
+
+@app.route("/acompanhamento")
+def acompanhamento_dashboard():
+    db = get_db()
+    total_ativos = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='ativo'").fetchone()[0]
+    total_vencidos = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='vencido'").fetchone()[0]
+    total_pausados = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='pausado'").fetchone()[0]
+    total_inativos = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='inativo'").fetchone()[0]
+    total_clientes = total_ativos + total_vencidos + total_pausados + total_inativos
+
+    receita_ativos = db.execute("""
+        SELECT COALESCE(SUM(p.valor), 0) FROM acompanhamento a
+        JOIN plano p ON a.plano_id = p.id WHERE a.status='ativo'
+    """).fetchone()[0]
+    receita_total = db.execute("""
+        SELECT COALESCE(SUM(p.valor), 0) FROM acompanhamento a
+        JOIN plano p ON a.plano_id = p.id
+    """).fetchone()[0]
+    ticket_medio = receita_total / total_clientes if total_clientes > 0 else 0
+
+    dist_plano = db.execute("""
+        SELECT p.nome, COUNT(*) as qt, p.valor
+        FROM acompanhamento a
+        JOIN plano p ON a.plano_id = p.id
+        WHERE a.status IN ('ativo','pausado')
+        GROUP BY p.id ORDER BY qt DESC
+    """).fetchall()
+
+    dist_estado = db.execute("""
+        SELECT estado, COUNT(*) as qt FROM acompanhamento
+        WHERE estado IS NOT NULL AND estado != ''
+        GROUP BY estado ORDER BY qt DESC
+    """).fetchall()
+
+    hoje = datetime.now()
+    aniversariantes = db.execute("""
+        SELECT nome, dt_nascimento, status FROM acompanhamento
+        WHERE dt_nascimento IS NOT NULL AND dt_nascimento != ''
+        ORDER BY nome
+    """).fetchall()
+    aniv_proximos = []
+    for a in aniversariantes:
+        try:
+            dt = datetime.fromisoformat(str(a["dt_nascimento"]))
+            aniv_este_ano = dt.replace(year=hoje.year)
+            if aniv_este_ano < hoje:
+                aniv_este_ano = dt.replace(year=hoje.year + 1)
+            dias = (aniv_este_ano - hoje).days
+            if 0 <= dias <= 30:
+                aniv_proximos.append({"nome": a["nome"], "data": dt.strftime("%d/%m"), "dias": dias})
+        except Exception:
+            pass
+
+    planos_cadastrados = db.execute("SELECT COUNT(*) FROM plano WHERE ativo=1").fetchone()[0]
+
+    return render_template("acompanhamento_dashboard.html",
+        total_ativos=total_ativos, total_vencidos=total_vencidos,
+        total_pausados=total_pausados, total_inativos=total_inativos,
+        receita_ativos=receita_ativos, receita_total=receita_total,
+        ticket_medio=ticket_medio, dist_plano=dist_plano,
+        dist_estado=dist_estado, aniv_proximos=aniv_proximos,
+        planos_cadastrados=planos_cadastrados)
+
+
+@app.route("/acompanhamento/clientes")
+def acompanhamento_clientes():
+    db = get_db()
+    busca = request.args.get("q", "").strip()
+    filtro_plano = request.args.get("plano", "")
+    filtro_status = request.args.get("status", "")
+    page = int(request.args.get("page", 1))
+    per_page = int(request.args.get("per_page", 20))
+
+    conditions = []
+    params = []
+    if busca:
+        conditions.append("(a.nome LIKE ? OR a.apelido LIKE ? OR a.documento LIKE ?)")
+        params.extend([f"%{busca}%"] * 3)
+    if filtro_plano:
+        conditions.append("a.plano_id = ?")
+        params.append(filtro_plano)
+    if filtro_status:
+        conditions.append("a.status = ?")
+        params.append(filtro_status)
+
+    where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
+    total = db.execute(f"SELECT COUNT(*) FROM acompanhamento a {where}", params).fetchone()[0]
+    rows = db.execute(f"""
+        SELECT a.*, p.nome AS plano_nome, p.valor AS plano_valor
+        FROM acompanhamento a
+        LEFT JOIN plano p ON a.plano_id = p.id
+        {where} ORDER BY a.nome LIMIT ? OFFSET ?
+    """, params + [per_page, (page - 1) * per_page]).fetchall()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    planos = db.execute("SELECT id, nome FROM plano WHERE ativo=1 ORDER BY nome").fetchall()
+    return render_template("acompanhamento_clientes.html", clientes=rows,
+        busca=busca, filtro_plano=filtro_plano, filtro_status=filtro_status,
+        page=page, per_page=per_page, total_pages=total_pages, total=total,
+        planos=planos, calc_idade_detalhada=calc_idade_detalhada)
+
+
+@app.route("/acompanhamento/clientes/novo", methods=["GET", "POST"])
+def acompanhamento_cliente_novo():
+    db = get_db()
+    if request.method == "POST":
+        db.execute("""
+            INSERT INTO acompanhamento (nome, apelido, whatsapp, documento, email,
+                dt_nascimento, estado, cidade, plano_id, dt_inicio, status,
+                status_plano, possui_vencimento, alerta_atendimentos, etiqueta)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            request.form.get("nome"), request.form.get("apelido"),
+            request.form.get("whatsapp"), request.form.get("documento"),
+            request.form.get("email"), request.form.get("dt_nascimento"),
+            request.form.get("estado"), request.form.get("cidade"),
+            request.form.get("plano_id") or None, request.form.get("dt_inicio"),
+            "ativo", "ativo",
+            1 if request.form.get("possui_vencimento") == "sim" else 0,
+            request.form.get("alerta_atendimentos", "nao_notificar"),
+            request.form.get("etiqueta"),
+        ))
+        db.commit()
+        return redirect("/acompanhamento/clientes")
+    planos = db.execute("SELECT * FROM plano WHERE ativo=1 ORDER BY nome").fetchall()
+    return render_template("acompanhamento_cliente_form.html",
+        cliente=None, planos=planos, estados=ESTADOS_BR)
+
+
+@app.route("/acompanhamento/clientes/<int:cid>/editar", methods=["GET", "POST"])
+def acompanhamento_cliente_editar(cid):
+    db = get_db()
+    cliente = db.execute("SELECT * FROM acompanhamento WHERE id=?", (cid,)).fetchone()
+    if not cliente:
+        return "Cliente não encontrado", 404
+    if request.method == "POST":
+        db.execute("""
+            UPDATE acompanhamento SET nome=?, apelido=?, whatsapp=?, documento=?,
+                email=?, dt_nascimento=?, estado=?, cidade=?, plano_id=?,
+                dt_inicio=?, status=?, status_plano=?, possui_vencimento=?,
+                alerta_atendimentos=?, etiqueta=?
+            WHERE id=?
+        """, (
+            request.form.get("nome"), request.form.get("apelido"),
+            request.form.get("whatsapp"), request.form.get("documento"),
+            request.form.get("email"), request.form.get("dt_nascimento"),
+            request.form.get("estado"), request.form.get("cidade"),
+            request.form.get("plano_id") or None, request.form.get("dt_inicio"),
+            request.form.get("status", "ativo"),
+            request.form.get("status_plano", "ativo"),
+            1 if request.form.get("possui_vencimento") == "sim" else 0,
+            request.form.get("alerta_atendimentos", "nao_notificar"),
+            request.form.get("etiqueta"), cid,
+        ))
+        db.commit()
+        return redirect("/acompanhamento/clientes")
+    planos = db.execute("SELECT * FROM plano WHERE ativo=1 ORDER BY nome").fetchall()
+    return render_template("acompanhamento_cliente_form.html",
+        cliente=cliente, planos=planos, estados=ESTADOS_BR)
+
+
+@app.route("/acompanhamento/clientes/<int:cid>/excluir", methods=["POST"])
+def acompanhamento_cliente_excluir(cid):
+    db = get_db()
+    db.execute("DELETE FROM acompanhamento WHERE id=?", (cid,))
+    db.commit()
+    return redirect("/acompanhamento/clientes")
+
+
+@app.route("/acompanhamento/planos")
+def acompanhamento_planos():
+    db = get_db()
+    planos = db.execute("""
+        SELECT p.*, (SELECT COUNT(*) FROM acompanhamento a WHERE a.plano_id = p.id) AS qt_clientes
+        FROM plano p ORDER BY p.nome
+    """).fetchall()
+    return render_template("acompanhamento_planos.html", planos=planos)
+
+
+@app.route("/acompanhamento/planos/novo", methods=["GET", "POST"])
+def acompanhamento_plano_novo():
+    if request.method == "POST":
+        db = get_db()
+        db.execute("INSERT INTO plano (nome, num_consultas, valor, descricao) VALUES (?,?,?,?)", (
+            request.form.get("nome"),
+            int(request.form.get("num_consultas", 1)),
+            float(request.form.get("valor", "0").replace(",", ".")),
+            request.form.get("descricao"),
+        ))
+        db.commit()
+        return redirect("/acompanhamento/planos")
+    return render_template("acompanhamento_plano_form.html", plano=None)
+
+
+@app.route("/acompanhamento/planos/<int:pid>/editar", methods=["GET", "POST"])
+def acompanhamento_plano_editar(pid):
+    db = get_db()
+    plano = db.execute("SELECT * FROM plano WHERE id=?", (pid,)).fetchone()
+    if not plano:
+        return "Plano não encontrado", 404
+    if request.method == "POST":
+        db.execute("UPDATE plano SET nome=?, num_consultas=?, valor=?, descricao=?, ativo=? WHERE id=?", (
+            request.form.get("nome"),
+            int(request.form.get("num_consultas", 1)),
+            float(request.form.get("valor", "0").replace(",", ".")),
+            request.form.get("descricao"),
+            1 if request.form.get("ativo") == "1" else 0, pid,
+        ))
+        db.commit()
+        return redirect("/acompanhamento/planos")
+    return render_template("acompanhamento_plano_form.html", plano=plano)
+
+
+@app.route("/acompanhamento/planos/<int:pid>/excluir", methods=["POST"])
+def acompanhamento_plano_excluir(pid):
+    db = get_db()
+    db.execute("DELETE FROM plano WHERE id=?", (pid,))
+    db.commit()
+    return redirect("/acompanhamento/planos")
 
 
 if __name__ == "__main__":
