@@ -8,9 +8,52 @@ from datetime import datetime
 
 app = Flask(__name__)
 DB_PATH = os.path.join(os.path.dirname(__file__), "avanutri.db")
+PG_URL = os.environ.get("DATABASE_URL", "")
 
 
-def init_db():
+def init_pg():
+    if not PG_URL:
+        return
+    import psycopg2
+    conn = psycopg2.connect(PG_URL)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS plano (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        num_consultas INTEGER DEFAULT 1,
+        valor REAL DEFAULT 0.0,
+        descricao TEXT,
+        ativo INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS acompanhamento (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        apelido TEXT,
+        whatsapp TEXT,
+        documento TEXT,
+        email TEXT,
+        dt_nascimento TEXT,
+        estado TEXT,
+        cidade TEXT,
+        plano_id INTEGER REFERENCES plano(id),
+        valor REAL DEFAULT 0.0,
+        dt_inicio TEXT,
+        dt_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        status TEXT DEFAULT 'ativo',
+        status_plano TEXT DEFAULT 'ativo',
+        etiqueta TEXT,
+        possui_vencimento INTEGER DEFAULT 1,
+        alerta_atendimentos TEXT DEFAULT 'nao_notificar'
+    )''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_plano ON acompanhamento(plano_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_status ON acompanhamento(status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_estado ON acompanhamento(estado)')
+    conn.commit()
+    conn.close()
+
+
+def init_sqlite_acomp():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS plano (
@@ -46,14 +89,14 @@ def init_db():
         c.execute('ALTER TABLE acompanhamento ADD COLUMN valor REAL DEFAULT 0.0')
     except sqlite3.OperationalError:
         pass
-    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_plano ON acompanhamento(plano_id)')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_status ON acompanhamento(status)')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_acomp_estado ON acompanhamento(estado)')
     conn.commit()
     conn.close()
 
 
-init_db()
+if PG_URL:
+    init_pg()
+else:
+    init_sqlite_acomp()
 
 NOMES_REFEICAO = {
     "0": "Desjejum", "1": "Desjejum", "2": "Colação", "3": "Almoço",
@@ -105,11 +148,52 @@ def get_db():
     return g.db
 
 
+def get_pg():
+    if not PG_URL:
+        return get_db()
+    if "pg" not in g:
+        import psycopg2
+        import psycopg2.extras
+        g.pg = psycopg2.connect(PG_URL)
+        g.pg.autocommit = False
+    return g.pg
+
+
+def pg_query(sql, params=None):
+    conn = get_pg()
+    if PG_URL:
+        import psycopg2.extras
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(sql.replace("?", "%s"), params or ())
+        return cur
+    else:
+        return conn.execute(sql, params or ())
+
+
+def pg_fetchall(sql, params=None):
+    cur = pg_query(sql, params)
+    return cur.fetchall()
+
+
+def pg_fetchone(sql, params=None):
+    cur = pg_query(sql, params)
+    return cur.fetchone()
+
+
+def pg_execute(sql, params=None):
+    cur = pg_query(sql, params)
+    get_pg().commit()
+    return cur
+
+
 @app.teardown_appcontext
 def close_db(exception):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+    pg = g.pop("pg", None)
+    if pg is not None:
+        pg.close()
 
 
 def calc_idade(dt_nasc_str):
@@ -615,60 +699,64 @@ ESTADOS_BR = [
 
 @app.route("/acompanhamento")
 def acompanhamento_dashboard():
-    db = get_db()
-    total_ativos = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='ativo'").fetchone()[0]
-    total_vencidos = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='vencido'").fetchone()[0]
-    total_pausados = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='pausado'").fetchone()[0]
-    total_inativos = db.execute("SELECT COUNT(*) FROM acompanhamento WHERE status='inativo'").fetchone()[0]
+    def _val(row, key):
+        if isinstance(row, dict):
+            return row.get(key)
+        return row[key]
+
+    total_ativos = _val(pg_fetchone("SELECT COUNT(*) as c FROM acompanhamento WHERE status='ativo'"), "c")
+    total_vencidos = _val(pg_fetchone("SELECT COUNT(*) as c FROM acompanhamento WHERE status='vencido'"), "c")
+    total_pausados = _val(pg_fetchone("SELECT COUNT(*) as c FROM acompanhamento WHERE status='pausado'"), "c")
+    total_inativos = _val(pg_fetchone("SELECT COUNT(*) as c FROM acompanhamento WHERE status='inativo'"), "c")
     total_clientes = total_ativos + total_vencidos + total_pausados + total_inativos
 
-    receita_ativos = db.execute("""
-        SELECT COALESCE(SUM(a.valor), 0) FROM acompanhamento a
+    receita_ativos = _val(pg_fetchone("""
+        SELECT COALESCE(SUM(a.valor), 0) as c FROM acompanhamento a
         WHERE a.status='ativo' AND a.plano_id IS NOT NULL AND a.valor > 0
-    """).fetchone()[0]
-    receita_total = db.execute("""
-        SELECT COALESCE(SUM(a.valor), 0) FROM acompanhamento a
+    """), "c")
+    receita_total = _val(pg_fetchone("""
+        SELECT COALESCE(SUM(a.valor), 0) as c FROM acompanhamento a
         WHERE a.plano_id IS NOT NULL AND a.valor > 0
-    """).fetchone()[0]
-    clientes_com_plano = db.execute("""
-        SELECT COUNT(*) FROM acompanhamento WHERE plano_id IS NOT NULL AND valor > 0
-    """).fetchone()[0]
+    """), "c")
+    clientes_com_plano = _val(pg_fetchone("""
+        SELECT COUNT(*) as c FROM acompanhamento WHERE plano_id IS NOT NULL AND valor > 0
+    """), "c")
     ticket_medio = receita_total / clientes_com_plano if clientes_com_plano > 0 else 0
 
-    dist_plano = db.execute("""
+    dist_plano = pg_fetchall("""
         SELECT p.nome, COUNT(*) as qt, p.valor
         FROM acompanhamento a
         JOIN plano p ON a.plano_id = p.id
         WHERE a.status IN ('ativo','pausado')
-        GROUP BY p.id ORDER BY qt DESC
-    """).fetchall()
+        GROUP BY p.nome, p.valor ORDER BY qt DESC
+    """)
 
-    dist_estado = db.execute("""
+    dist_estado = pg_fetchall("""
         SELECT estado, COUNT(*) as qt FROM acompanhamento
         WHERE estado IS NOT NULL AND estado != ''
         GROUP BY estado ORDER BY qt DESC
-    """).fetchall()
+    """)
 
     hoje = datetime.now()
-    aniversariantes = db.execute("""
+    aniversariantes = pg_fetchall("""
         SELECT nome, dt_nascimento, status FROM acompanhamento
         WHERE dt_nascimento IS NOT NULL AND dt_nascimento != ''
         ORDER BY nome
-    """).fetchall()
+    """)
     aniv_proximos = []
     for a in aniversariantes:
         try:
-            dt = datetime.fromisoformat(str(a["dt_nascimento"]))
+            dt = datetime.fromisoformat(str(_val(a, "dt_nascimento")))
             aniv_este_ano = dt.replace(year=hoje.year)
             if aniv_este_ano < hoje:
                 aniv_este_ano = dt.replace(year=hoje.year + 1)
             dias = (aniv_este_ano - hoje).days
             if 0 <= dias <= 30:
-                aniv_proximos.append({"nome": a["nome"], "data": dt.strftime("%d/%m"), "dias": dias})
+                aniv_proximos.append({"nome": _val(a, "nome"), "data": dt.strftime("%d/%m"), "dias": dias})
         except Exception:
             pass
 
-    planos_cadastrados = db.execute("SELECT COUNT(*) FROM plano WHERE ativo=1").fetchone()[0]
+    planos_cadastrados = _val(pg_fetchone("SELECT COUNT(*) as c FROM plano WHERE ativo=1"), "c")
 
     return render_template("acompanhamento_dashboard.html",
         total_ativos=total_ativos, total_vencidos=total_vencidos,
@@ -681,7 +769,6 @@ def acompanhamento_dashboard():
 
 @app.route("/acompanhamento/clientes")
 def acompanhamento_clientes():
-    db = get_db()
     busca = request.args.get("q", "").strip()
     filtro_plano = request.args.get("plano", "")
     filtro_status = request.args.get("status", "")
@@ -691,25 +778,32 @@ def acompanhamento_clientes():
     conditions = []
     params = []
     if busca:
-        conditions.append("(a.nome LIKE ? OR a.apelido LIKE ? OR a.documento LIKE ?)")
+        lk = "ILIKE" if PG_URL else "LIKE"
+        conditions.append(f"(a.nome {lk} ? OR a.apelido {lk} ? OR a.documento {lk} ?)")
         params.extend([f"%{busca}%"] * 3)
     if filtro_plano:
         conditions.append("a.plano_id = ?")
-        params.append(filtro_plano)
+        params.append(int(filtro_plano))
     if filtro_status:
         conditions.append("a.status = ?")
         params.append(filtro_status)
 
     where = (" WHERE " + " AND ".join(conditions)) if conditions else ""
-    total = db.execute(f"SELECT COUNT(*) FROM acompanhamento a {where}", params).fetchone()[0]
-    rows = db.execute(f"""
+
+    def _val(row, key):
+        if isinstance(row, dict):
+            return row.get(key)
+        return row[key]
+
+    total = _val(pg_fetchone(f"SELECT COUNT(*) as c FROM acompanhamento a {where}", params), "c")
+    rows = pg_fetchall(f"""
         SELECT a.*, p.nome AS plano_nome, p.valor AS plano_valor
         FROM acompanhamento a
         LEFT JOIN plano p ON a.plano_id = p.id
         {where} ORDER BY a.nome LIMIT ? OFFSET ?
-    """, params + [per_page, (page - 1) * per_page]).fetchall()
+    """, params + [per_page, (page - 1) * per_page])
     total_pages = max(1, (total + per_page - 1) // per_page)
-    planos = db.execute("SELECT id, nome FROM plano WHERE ativo=1 ORDER BY nome").fetchall()
+    planos = pg_fetchall("SELECT id, nome FROM plano WHERE ativo=1 ORDER BY nome")
     return render_template("acompanhamento_clientes.html", clientes=rows,
         busca=busca, filtro_plano=filtro_plano, filtro_status=filtro_status,
         page=page, per_page=per_page, total_pages=total_pages, total=total,
@@ -727,9 +821,8 @@ def parse_valor(s):
 
 @app.route("/acompanhamento/clientes/novo", methods=["GET", "POST"])
 def acompanhamento_cliente_novo():
-    db = get_db()
     if request.method == "POST":
-        db.execute("""
+        pg_execute("""
             INSERT INTO acompanhamento (nome, apelido, whatsapp, documento, email,
                 dt_nascimento, estado, cidade, plano_id, valor, dt_inicio, status,
                 status_plano, possui_vencimento, alerta_atendimentos, etiqueta)
@@ -739,7 +832,7 @@ def acompanhamento_cliente_novo():
             request.form.get("whatsapp"), request.form.get("documento"),
             request.form.get("email"), request.form.get("dt_nascimento"),
             request.form.get("estado"), request.form.get("cidade"),
-            request.form.get("plano_id") or None,
+            int(request.form.get("plano_id")) if request.form.get("plano_id") else None,
             parse_valor(request.form.get("valor")),
             request.form.get("dt_inicio"),
             "ativo", "ativo",
@@ -747,21 +840,19 @@ def acompanhamento_cliente_novo():
             request.form.get("alerta_atendimentos", "nao_notificar"),
             request.form.get("etiqueta"),
         ))
-        db.commit()
         return redirect("/acompanhamento/clientes")
-    planos = db.execute("SELECT * FROM plano WHERE ativo=1 ORDER BY nome").fetchall()
+    planos = pg_fetchall("SELECT * FROM plano WHERE ativo=1 ORDER BY nome")
     return render_template("acompanhamento_cliente_form.html",
         cliente=None, planos=planos, estados=ESTADOS_BR)
 
 
 @app.route("/acompanhamento/clientes/<int:cid>/editar", methods=["GET", "POST"])
 def acompanhamento_cliente_editar(cid):
-    db = get_db()
-    cliente = db.execute("SELECT * FROM acompanhamento WHERE id=?", (cid,)).fetchone()
+    cliente = pg_fetchone("SELECT * FROM acompanhamento WHERE id=?", (cid,))
     if not cliente:
         return "Cliente não encontrado", 404
     if request.method == "POST":
-        db.execute("""
+        pg_execute("""
             UPDATE acompanhamento SET nome=?, apelido=?, whatsapp=?, documento=?,
                 email=?, dt_nascimento=?, estado=?, cidade=?, plano_id=?,
                 valor=?, dt_inicio=?, status=?, status_plano=?, possui_vencimento=?,
@@ -772,7 +863,7 @@ def acompanhamento_cliente_editar(cid):
             request.form.get("whatsapp"), request.form.get("documento"),
             request.form.get("email"), request.form.get("dt_nascimento"),
             request.form.get("estado"), request.form.get("cidade"),
-            request.form.get("plano_id") or None,
+            int(request.form.get("plano_id")) if request.form.get("plano_id") else None,
             parse_valor(request.form.get("valor")),
             request.form.get("dt_inicio"),
             request.form.get("status", "ativo"),
@@ -781,70 +872,60 @@ def acompanhamento_cliente_editar(cid):
             request.form.get("alerta_atendimentos", "nao_notificar"),
             request.form.get("etiqueta"), cid,
         ))
-        db.commit()
         return redirect("/acompanhamento/clientes")
-    planos = db.execute("SELECT * FROM plano WHERE ativo=1 ORDER BY nome").fetchall()
+    planos = pg_fetchall("SELECT * FROM plano WHERE ativo=1 ORDER BY nome")
     return render_template("acompanhamento_cliente_form.html",
         cliente=cliente, planos=planos, estados=ESTADOS_BR)
 
 
 @app.route("/acompanhamento/clientes/<int:cid>/excluir", methods=["POST"])
 def acompanhamento_cliente_excluir(cid):
-    db = get_db()
-    db.execute("DELETE FROM acompanhamento WHERE id=?", (cid,))
-    db.commit()
+    pg_execute("DELETE FROM acompanhamento WHERE id=?", (cid,))
     return redirect("/acompanhamento/clientes")
 
 
 @app.route("/acompanhamento/planos")
 def acompanhamento_planos():
-    db = get_db()
-    planos = db.execute("""
+    planos = pg_fetchall("""
         SELECT p.*, (SELECT COUNT(*) FROM acompanhamento a WHERE a.plano_id = p.id) AS qt_clientes
         FROM plano p ORDER BY p.nome
-    """).fetchall()
+    """)
     return render_template("acompanhamento_planos.html", planos=planos)
 
 
 @app.route("/acompanhamento/planos/novo", methods=["GET", "POST"])
 def acompanhamento_plano_novo():
     if request.method == "POST":
-        db = get_db()
-        db.execute("INSERT INTO plano (nome, num_consultas, valor, descricao) VALUES (?,?,?,?)", (
+        pg_execute("INSERT INTO plano (nome, num_consultas, valor, descricao) VALUES (?,?,?,?)", (
             request.form.get("nome"),
             int(request.form.get("num_consultas", 1)),
             parse_valor(request.form.get("valor")),
             request.form.get("descricao"),
         ))
-        db.commit()
         return redirect("/acompanhamento/planos")
     return render_template("acompanhamento_plano_form.html", plano=None)
 
 
 @app.route("/acompanhamento/planos/<int:pid>/editar", methods=["GET", "POST"])
 def acompanhamento_plano_editar(pid):
-    db = get_db()
-    plano = db.execute("SELECT * FROM plano WHERE id=?", (pid,)).fetchone()
+    plano = pg_fetchone("SELECT * FROM plano WHERE id=?", (pid,))
     if not plano:
         return "Plano não encontrado", 404
     if request.method == "POST":
-        db.execute("UPDATE plano SET nome=?, num_consultas=?, valor=?, descricao=?, ativo=? WHERE id=?", (
+        pg_execute("UPDATE plano SET nome=?, num_consultas=?, valor=?, descricao=?, ativo=? WHERE id=?", (
             request.form.get("nome"),
             int(request.form.get("num_consultas", 1)),
             parse_valor(request.form.get("valor")),
             request.form.get("descricao"),
             1 if request.form.get("ativo") == "1" else 0, pid,
         ))
-        db.commit()
         return redirect("/acompanhamento/planos")
     return render_template("acompanhamento_plano_form.html", plano=plano)
 
 
 @app.route("/acompanhamento/planos/<int:pid>/excluir", methods=["POST"])
 def acompanhamento_plano_excluir(pid):
-    db = get_db()
-    db.execute("DELETE FROM plano WHERE id=?", (pid,))
-    db.commit()
+    pg_execute("DELETE FROM plano WHERE id=?", (pid,))
     return redirect("/acompanhamento/planos")
 
 
