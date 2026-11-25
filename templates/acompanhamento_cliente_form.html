@@ -105,7 +105,8 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Valor R$</label>
-                        <input type="text" name="valor" id="valor_input" class="form-input" placeholder="0,00" value="{{ '%.2f'|format(cliente.valor)|replace('.', ',') if cliente and cliente.valor else '' }}">
+                        <input type="text" id="valor_display" class="form-input" readonly style="background:#f4f6f5;color:#555;cursor:not-allowed" value="{{ '%.2f'|format(cliente.valor)|replace('.', ',') if cliente and cliente.valor else '0,00' }}">
+                        <input type="hidden" name="valor" id="valor_input" value="{{ '%.2f'|format(cliente.valor)|replace('.', ',') if cliente and cliente.valor else '0,00' }}">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Inicia em</label>
@@ -177,9 +178,9 @@ function preencherValor() {
     var sel = document.getElementById('plano_select');
     var opt = sel.options[sel.selectedIndex];
     var val = parseFloat(opt.getAttribute('data-valor') || 0);
-    if (val > 0) {
-        document.getElementById('valor_input').value = val.toFixed(2).replace('.', ',');
-    }
+    var formatted = val.toFixed(2).replace('.', ',');
+    document.getElementById('valor_display').value = formatted;
+    document.getElementById('valor_input').value = formatted;
 }
 </script>
 {% endblock %}
