@@ -716,11 +716,19 @@ def acompanhamento_clientes():
         planos=planos, calc_idade_detalhada=calc_idade_detalhada)
 
 
+def parse_valor(s):
+    if not s or not s.strip():
+        return 0.0
+    try:
+        return float(s.strip().replace(",", "."))
+    except (ValueError, TypeError):
+        return 0.0
+
+
 @app.route("/acompanhamento/clientes/novo", methods=["GET", "POST"])
 def acompanhamento_cliente_novo():
     db = get_db()
     if request.method == "POST":
-        valor_str = request.form.get("valor", "0").replace(",", ".")
         db.execute("""
             INSERT INTO acompanhamento (nome, apelido, whatsapp, documento, email,
                 dt_nascimento, estado, cidade, plano_id, valor, dt_inicio, status,
@@ -732,7 +740,7 @@ def acompanhamento_cliente_novo():
             request.form.get("email"), request.form.get("dt_nascimento"),
             request.form.get("estado"), request.form.get("cidade"),
             request.form.get("plano_id") or None,
-            float(valor_str) if valor_str else 0.0,
+            parse_valor(request.form.get("valor")),
             request.form.get("dt_inicio"),
             "ativo", "ativo",
             1 if request.form.get("possui_vencimento") == "sim" else 0,
@@ -753,7 +761,6 @@ def acompanhamento_cliente_editar(cid):
     if not cliente:
         return "Cliente não encontrado", 404
     if request.method == "POST":
-        valor_str = request.form.get("valor", "0").replace(",", ".")
         db.execute("""
             UPDATE acompanhamento SET nome=?, apelido=?, whatsapp=?, documento=?,
                 email=?, dt_nascimento=?, estado=?, cidade=?, plano_id=?,
@@ -766,7 +773,7 @@ def acompanhamento_cliente_editar(cid):
             request.form.get("email"), request.form.get("dt_nascimento"),
             request.form.get("estado"), request.form.get("cidade"),
             request.form.get("plano_id") or None,
-            float(valor_str) if valor_str else 0.0,
+            parse_valor(request.form.get("valor")),
             request.form.get("dt_inicio"),
             request.form.get("status", "ativo"),
             request.form.get("status_plano", "ativo"),
@@ -806,7 +813,7 @@ def acompanhamento_plano_novo():
         db.execute("INSERT INTO plano (nome, num_consultas, valor, descricao) VALUES (?,?,?,?)", (
             request.form.get("nome"),
             int(request.form.get("num_consultas", 1)),
-            float(request.form.get("valor", "0").replace(",", ".")),
+            parse_valor(request.form.get("valor")),
             request.form.get("descricao"),
         ))
         db.commit()
@@ -824,7 +831,7 @@ def acompanhamento_plano_editar(pid):
         db.execute("UPDATE plano SET nome=?, num_consultas=?, valor=?, descricao=?, ativo=? WHERE id=?", (
             request.form.get("nome"),
             int(request.form.get("num_consultas", 1)),
-            float(request.form.get("valor", "0").replace(",", ".")),
+            parse_valor(request.form.get("valor")),
             request.form.get("descricao"),
             1 if request.form.get("ativo") == "1" else 0, pid,
         ))
